@@ -1,7 +1,12 @@
-name: deploy
+name: ci
 
 on:
   push:
+    branches: [main]
+  # Required. Without this the checks never run on a PR, so a branch ruleset
+  # that requires `test` blocks every PR forever waiting for a report that
+  # cannot arrive.
+  pull_request:
     branches: [main]
   workflow_dispatch:
 
@@ -18,8 +23,8 @@ jobs:
   test:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
-      - uses: actions/setup-python@v5
+      - uses: actions/checkout@v7
+      - uses: actions/setup-python@v7
         with: { python-version: "3.12" }
       # The DR4-readiness invariant is enforced here, not by discipline:
       # no Gaia release name may leak outside catasterism.release.
@@ -31,7 +36,7 @@ jobs:
     needs: test
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v4
+      - uses: actions/checkout@v7
       - uses: oven-sh/setup-bun@v2
       - run: bun install
         working-directory: client
@@ -39,15 +44,17 @@ jobs:
         working-directory: client
       - run: bun run build
         working-directory: client
-      - uses: actions/upload-pages-artifact@v3
+      - uses: actions/upload-pages-artifact@v5
         with: { path: client/dist }
 
+  # Only from main. A PR must be checked, never deployed.
   deploy:
     needs: build
+    if: github.event_name == 'push' && github.ref == 'refs/heads/main'
     runs-on: ubuntu-latest
     environment:
       name: github-pages
       url: ${{ steps.deploy.outputs.page_url }}
     steps:
       - id: deploy
-        uses: actions/deploy-pages@v4
+        uses: actions/deploy-pages@v5
