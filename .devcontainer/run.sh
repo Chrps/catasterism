@@ -10,7 +10,7 @@ set -euo pipefail
 REPO="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 IMAGE="catasterism-sandbox"
 
-docker build -t "$IMAGE" "$REPO/.devcontainer"
+docker build -t "$IMAGE" -f "$REPO/.devcontainer/Dockerfile" "$REPO"
 
 docker volume create catasterism-claude-config >/dev/null
 docker volume create catasterism-bash-history >/dev/null

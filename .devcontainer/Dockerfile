@@ -48,6 +48,12 @@ RUN set -eux; \
     rm -rf /tmp/bun.zip /tmp/bun-linux-${BUN_ARCH}; \
     bun --version
 
+# Python dependencies are baked in so the container is usable on entry rather
+# than after a five-minute pip install. Only the requirements file is copied --
+# the package itself comes from the runtime mount, via PYTHONPATH below.
+COPY pipeline/requirements.txt /tmp/requirements.txt
+RUN pip install --no-cache-dir -r /tmp/requirements.txt && rm /tmp/requirements.txt
+
 # Config and history live here. A fresh named volume inherits the
 # ownership of the image directory it shadows, which is why these are
 # created and chowned before the volumes are attached.
@@ -57,3 +63,4 @@ RUN mkdir -p /home/${USERNAME}/.claude /commandhistory /workspace \
 USER ${USERNAME}
 WORKDIR /workspace
 ENV SHELL=/bin/bash
+ENV PYTHONPATH=/workspace/pipeline/src

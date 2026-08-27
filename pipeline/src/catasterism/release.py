@@ -30,8 +30,23 @@ TAP_ENDPOINT = "https://gea.esac.esa.int/tap-server/tap/sync"
 # is both a comfortable TAP page size and the partition that makes the joins in
 # PLAN.md section 9 stage 2 fit in memory.
 HEALPIX_PARTITION_LEVEL = 4
-HEALPIX_PARTITION_DIVISOR = 2 ** (35 + 2 * (12 - HEALPIX_PARTITION_LEVEL))
-HEALPIX_PARTITION_COUNT = 12 * 4**HEALPIX_PARTITION_LEVEL
+SOURCE_ID_HEALPIX_LEVEL = 12
+
+
+def healpix_divisor(level: int = HEALPIX_PARTITION_LEVEL) -> int:
+    """Divide a ``source_id`` by this to get its HEALPix index at ``level``."""
+    if not 0 <= level <= SOURCE_ID_HEALPIX_LEVEL:
+        raise ValueError(f"level {level} outside 0..{SOURCE_ID_HEALPIX_LEVEL}")
+    return 2 ** (35 + 2 * (SOURCE_ID_HEALPIX_LEVEL - level))
+
+
+def healpix_count(level: int = HEALPIX_PARTITION_LEVEL) -> int:
+    """Number of all-sky partitions at ``level``."""
+    return 12 * 4**level
+
+
+HEALPIX_PARTITION_DIVISOR = healpix_divisor()
+HEALPIX_PARTITION_COUNT = healpix_count()
 
 
 @dataclass(frozen=True)
@@ -59,12 +74,20 @@ class Release:
     """Canonical internal name -> release-specific column name. This is the
     schema-mapping layer; DR4 renames things and adds more."""
 
-    def healpix_range(self, pixel: int) -> tuple[int, int]:
-        """Inclusive ``source_id`` bounds for one HEALPix partition."""
-        if not 0 <= pixel < HEALPIX_PARTITION_COUNT:
-            raise ValueError(f"pixel {pixel} outside 0..{HEALPIX_PARTITION_COUNT - 1}")
-        lo = pixel * HEALPIX_PARTITION_DIVISOR
-        return lo, lo + HEALPIX_PARTITION_DIVISOR - 1
+    def healpix_range(
+        self, pixel: int, level: int = HEALPIX_PARTITION_LEVEL
+    ) -> tuple[int, int]:
+        """Inclusive ``source_id`` bounds for one HEALPix partition.
+
+        Level 4 (3072 chunks) suits the full catalogue. Small tiers use a
+        coarser level so they are not split into thousands of tiny requests.
+        """
+        count = healpix_count(level)
+        if not 0 <= pixel < count:
+            raise ValueError(f"pixel {pixel} outside 0..{count - 1} at level {level}")
+        divisor = healpix_divisor(level)
+        lo = pixel * divisor
+        return lo, lo + divisor - 1
 
     def tag_id(self, source_id: int) -> str:
         """Release-tagged identifier, e.g. ``Gaia DR3 2947050466531873024``.

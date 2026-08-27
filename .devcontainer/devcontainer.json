@@ -1,7 +1,10 @@
 {
   "name": "catasterism",
+  // Context is the repo root so the image can bake pipeline/requirements.txt
+  // rather than keeping a duplicate copy in .devcontainer/.
   "build": {
-    "dockerfile": "Dockerfile"
+    "dockerfile": "Dockerfile",
+    "context": ".."
   },
 
   // Only this repo is mounted. Nothing else from the host filesystem is visible.
