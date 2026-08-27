@@ -1,0 +1,29 @@
+{
+  "name": "star",
+  "build": {
+    "dockerfile": "Dockerfile"
+  },
+
+  // Only this repo is mounted. Nothing else from the host filesystem is visible.
+  "workspaceFolder": "/workspace",
+  "workspaceMount": "source=${localWorkspaceFolder},target=/workspace,type=bind,consistency=cached",
+
+  // Named Docker volumes (not host paths) so login + history survive rebuilds
+  // without exposing anything outside the repo.
+  "mounts": [
+    "source=star-claude-config,target=/home/dev/.claude,type=volume",
+    "source=star-bash-history,target=/commandhistory,type=volume"
+  ],
+
+  "remoteUser": "dev",
+  "containerUser": "dev",
+
+  "runArgs": [
+    "--security-opt=no-new-privileges",
+    "--cap-drop=ALL"
+  ],
+
+  "containerEnv": {
+    "HISTFILE": "/commandhistory/.bash_history"
+  }
+}

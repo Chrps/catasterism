@@ -1,0 +1,24 @@
+# secrets
+.env
+.env.*
+!.env.example
+
+# python
+.venv/
+__pycache__/
+*.pyc
+
+# node
+node_modules/
+client/dist/
+bun.lockb
+
+# data + scratch
+data/
+scratch/
+
+# local agent state
+.claude/settings.local.json
+
+# os
+.DS_Store

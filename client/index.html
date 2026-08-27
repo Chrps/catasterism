@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Star</title>
+    <style>
+      html, body { margin: 0; height: 100%; background: #000; color: #ccc;
+                   font: 13px/1.5 ui-monospace, monospace; overflow: hidden; }
+      canvas { display: block; width: 100vw; height: 100vh; }
+      #hud { position: fixed; top: 12px; left: 14px; pointer-events: none;
+             text-shadow: 0 0 4px #000; }
+      #attribution { position: fixed; bottom: 10px; right: 14px; font-size: 11px;
+                     color: #667; pointer-events: auto; }
+      #attribution a { color: #889; }
+    </style>
+  </head>
+  <body>
+    <canvas id="view"></canvas>
+    <div id="hud">initialising…</div>
+    <!-- Required by ESA. Belongs in the UI, not only the README: the data is the
+         product. See ATTRIBUTION.md. -->
+    <div id="attribution">
+      Data:
+      <a href="https://www.cosmos.esa.int/gaia">ESA/Gaia</a>/<a
+        href="https://www.cosmos.esa.int/web/gaia/dpac/consortium">DPAC</a>
+    </div>
+    <script type="module" src="./main.js"></script>
+  </body>
+</html>

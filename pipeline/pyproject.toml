@@ -1,0 +1,27 @@
+[project]
+name = "star-pipeline"
+version = "0.1.0"
+description = "Offline pipeline that bakes Gaia catalogue data into renderable tiles"
+requires-python = ">=3.12"
+dependencies = [
+    "numpy>=2.0",
+    "pyarrow>=17",
+    "duckdb>=1.1",
+    "astropy>=6.1",
+    "astroquery>=0.4.7",
+    "requests>=2.32",
+]
+
+[project.optional-dependencies]
+dev = ["pytest>=8", "matplotlib>=3.9"]
+
+[build-system]
+requires = ["setuptools>=68"]
+build-backend = "setuptools.build_meta"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+pythonpath = ["src"]

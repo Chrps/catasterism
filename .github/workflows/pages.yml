@@ -1,0 +1,53 @@
+name: deploy
+
+on:
+  push:
+    branches: [main]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages
+  cancel-in-progress: true
+
+jobs:
+  test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-python@v5
+        with: { python-version: "3.12" }
+      # The DR4-readiness invariant is enforced here, not by discipline:
+      # no Gaia release name may leak outside star_pipeline.release.
+      - run: pip install pytest
+      - run: python -m pytest -q
+        working-directory: pipeline
+
+  build:
+    needs: test
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: oven-sh/setup-bun@v2
+      - run: bun install
+        working-directory: client
+      - run: bun run typecheck
+        working-directory: client
+      - run: bun run build
+        working-directory: client
+      - uses: actions/upload-pages-artifact@v3
+        with: { path: client/dist }
+
+  deploy:
+    needs: build
+    runs-on: ubuntu-latest
+    environment:
+      name: github-pages
+      url: ${{ steps.deploy.outputs.page_url }}
+    steps:
+      - id: deploy
+        uses: actions/deploy-pages@v4
