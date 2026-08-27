@@ -1,4 +1,4 @@
-# Star
+# Catasterism
 
 A browser flight-sim through the Gaia DR3 catalogue: 320 million stars you can
 fly around, hosted as static files with no backend.
@@ -21,6 +21,11 @@ disabled:
 ./.devcontainer/run.sh claude
 ```
 
+That starts Claude Code in **auto** permission mode; `.claude/settings.json`
+sets the same default for the VS Code extension, which is installed *into* the
+container (a devcontainer gets its own extension host and does not inherit the
+host's extensions).
+
 Do not add mounts pointing outside this repository, and do not add credentials
 to the container image or to tracked files. Secrets belong in a gitignored
 `.env`.
@@ -28,7 +33,8 @@ to the container image or to tracked files. Secrets belong in a gitignored
 ## Layout
 
 ```
-pipeline/     Python. Offline bake: Gaia TAP -> clean/derive -> octree -> tiles.
+pipeline/     Python (package `catasterism`). Offline bake:
+              Gaia TAP -> clean/derive -> octree -> tiles.
               Never ships. Runs on a laptop or in CI.
 client/       TypeScript + Bun + raw WebGL2. The only thing a visitor loads.
 tools/        Verification scripts backing the numbers in PLAN.md. Keep runnable.
@@ -43,7 +49,7 @@ pre-accumulation exposure and camera-relative transforms all cut against a scene
 graph. Reaching for Three.js when WebGL2 gets awkward is the wrong instinct; it
 will get awkward, and that is the part a scene graph makes harder.
 
-**No Gaia release name outside `star_pipeline.release`.** Gaia DR4 lands
+**No Gaia release name outside `catasterism.release`.** Gaia DR4 lands
 2026-12-02, so this pipeline runs at least twice and the second run must not be a
 rewrite. Table names, the reference epoch (it moves every release) and column
 mappings all live in that one module. `pipeline/tests/test_release.py` enforces

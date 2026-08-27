@@ -22,7 +22,7 @@ jobs:
       - uses: actions/setup-python@v5
         with: { python-version: "3.12" }
       # The DR4-readiness invariant is enforced here, not by discipline:
-      # no Gaia release name may leak outside star_pipeline.release.
+      # no Gaia release name may leak outside catasterism.release.
       - run: pip install pytest
       - run: python -m pytest -q
         working-directory: pipeline

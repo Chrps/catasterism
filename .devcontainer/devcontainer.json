@@ -1,5 +1,5 @@
 {
-  "name": "star",
+  "name": "catasterism",
   "build": {
     "dockerfile": "Dockerfile"
   },
@@ -11,9 +11,20 @@
   // Named Docker volumes (not host paths) so login + history survive rebuilds
   // without exposing anything outside the repo.
   "mounts": [
-    "source=star-claude-config,target=/home/dev/.claude,type=volume",
-    "source=star-bash-history,target=/commandhistory,type=volume"
+    "source=catasterism-claude-config,target=/home/dev/.claude,type=volume",
+    "source=catasterism-bash-history,target=/commandhistory,type=volume"
   ],
+
+  // The Claude Code extension is installed into the container, not inherited
+  // from the host -- a devcontainer gets its own extension host.
+  "customizations": {
+    "vscode": {
+      "extensions": ["anthropic.claude-code"],
+      "settings": {
+        "terminal.integrated.defaultProfile.linux": "bash"
+      }
+    }
+  },
 
   "remoteUser": "dev",
   "containerUser": "dev",

@@ -2,7 +2,7 @@
   "lockfileVersion": 1,
   "workspaces": {
     "": {
-      "name": "star-client",
+      "name": "catasterism-client",
       "devDependencies": {
         "@types/bun": "latest",
         "typescript": "^5.6.0",

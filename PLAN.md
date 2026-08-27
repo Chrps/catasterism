@@ -1,4 +1,4 @@
-# Star — an explorable 3D map of the Gaia catalogue
+# Catasterism — an explorable 3D map of the Gaia catalogue
 
 **Status:** design investigation, no code yet.
 **Date:** 2026-08-27.

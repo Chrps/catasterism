@@ -1,4 +1,4 @@
-# Star — build steps
+# Catasterism — build steps
 
 Companion to [PLAN.md](PLAN.md), which holds the research, the measured numbers and
 the design rationale. This file is the execution order: six steps, each with the

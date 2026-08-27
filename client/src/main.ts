@@ -27,7 +27,7 @@ function main(): void {
     depth: false, // stars are additive point sprites; nothing occludes
     alpha: false,
   });
-  if (!gl) fail(hud, "WebGL2 unavailable — this browser cannot run Star");
+  if (!gl) fail(hud, "WebGL2 unavailable — this browser cannot run Catasterism");
 
   // rgba16float accumulation is required, not optional: free flight spans 10^20
   // in apparent brightness (PLAN.md 6.1).
@@ -47,7 +47,7 @@ function main(): void {
 
   const renderer = gl.getParameter(gl.RENDERER) as string;
   hud.innerHTML = [
-    `star · catalogue ${CATALOGUE_VERSION}`,
+    `catasterism · catalogue ${CATALOGUE_VERSION}`,
     `WebGL2 · ${renderer}`,
     `float render targets: ${hdr ? "yes" : "NO — HDR accumulation unavailable"}`,
     `${canvas.width}×${canvas.height}`,

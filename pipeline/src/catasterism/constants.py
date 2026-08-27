@@ -1,7 +1,7 @@
 """Physical constants and the Sun.
 
 Release-independent. Anything that changes between Gaia releases belongs in
-:mod:`star_pipeline.release`, not here.
+:mod:`catasterism.release`, not here.
 """
 
 from __future__ import annotations

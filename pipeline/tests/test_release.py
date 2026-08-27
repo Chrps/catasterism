@@ -2,7 +2,7 @@
 
 Gaia DR4 releases 2026-12-02. This pipeline runs at least twice and the second
 run must not be a rewrite, which requires that no release-specific string leaks
-out of star_pipeline.release. See PLAN.md section 9 stage 5.
+out of catasterism.release. See PLAN.md section 9 stage 5.
 
 Note that the needles below are assembled at runtime rather than written as
 literals, so this file stays subject to the invariant it enforces instead of
@@ -16,7 +16,7 @@ from pathlib import Path
 
 import pytest
 
-from star_pipeline.release import (
+from catasterism.release import (
     ACTIVE,
     DR3,
     DR4,
@@ -27,7 +27,7 @@ from star_pipeline.release import (
 
 REPO = Path(__file__).resolve().parents[2]
 SOURCE_DIRS = ("pipeline/src", "pipeline/tests", "client/src")
-RELEASE_MODULE = REPO / "pipeline/src/star_pipeline/release.py"
+RELEASE_MODULE = REPO / "pipeline/src/catasterism/release.py"
 
 
 def _source_files():
@@ -48,7 +48,7 @@ def test_release_names_appear_only_in_the_release_module(n):
     ]
     assert not offenders, (
         f"{slug!r} leaked outside release.py: {offenders}. "
-        "Release-specific names belong in star_pipeline.release only."
+        "Release-specific names belong in catasterism.release only."
     )
 
 
