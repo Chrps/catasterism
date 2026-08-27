@@ -78,6 +78,9 @@ asserted, not assumed. Break it and brightness pops on every LOD swap.
 - **Building the tile format before the renderer exists.** Deliberately deferred
   to Step 2 so it can be designed with evidence. Step 1 uses a flat file.
 - **Git LFS.** Never. Its free tier is 1 GB/month of bandwidth; tiles go to R2.
+- **Anything that earns money.** Gaia data is CC BY-NC 3.0 IGO. No ads, no paid
+  tier, no sponsorship — ESA requires written permission first, and "indirectly
+  generates a financial gain" is broad. See ATTRIBUTION.md.
 
 ## Running things
 

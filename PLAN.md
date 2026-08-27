@@ -1442,18 +1442,29 @@ before there is anything complicated to debug.
 
 ## 10c. Licensing and attribution
 
-Three separate obligations, all real:
+Three separately-licensed things, and one of them constrains the product.
 
-1. **Gaia data.** ESA requires acknowledgement of ESA/Gaia/DPAC and the funding
-   consortia, plus citation of the DR3 papers. It belongs **in the UI**, not only in
-   the README — the data *is* the product.
-2. **The derived catalogue.** The quantised tiles are a derived work needing their own
-   licence. CC-BY-4.0 fits and matches the norms of the field.
-3. **The code.** MIT or Apache-2.0.
+| What | Licence |
+| --- | --- |
+| Code | **MIT** |
+| Derived catalogue (tiles) | **CC BY-NC 4.0** — cannot be more permissive than its source |
+| Underlying Gaia data | **CC BY-NC 3.0 IGO** (ESA/Gaia/DPAC) |
 
-Credit the third-party catalogues as Step 3 adopts them: Bailer-Jones et al.
-(distances), El-Badry et al. (binaries), Lindegren et al. (zero-point), Hipparcos
-(bright-star patches), and the chosen cluster membership catalogue.
+**The NonCommercial term is real and it shapes the project.** ESA's archive terms
+require written authorisation *before* "any use or application that directly or
+indirectly generates a financial gain" (data.licences@esa.int). So: no ads, no
+paid tier, no sponsorship, no selling tiles — and the derived catalogue stays NC,
+because we cannot grant rights we were not given. The terms also forbid implying
+ESA endorsement.
+
+**Open-sourcing is not required.** The licence obliges attribution and
+non-commercial use, not publication. Making the repository public is a choice.
+
+The ESA/Gaia/DPAC acknowledgement is an obligation and belongs **in the UI**, not
+only the README — the data is the product. Full text and the third-party
+catalogue credits are in `ATTRIBUTION.md`; check each third-party catalogue's own
+licence before redistributing its values in the tiles, as they are not covered by
+the Gaia terms.
 
 ---
 
