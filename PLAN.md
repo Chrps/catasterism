@@ -250,6 +250,25 @@ tiers stream in on top of lower ones (they are disjoint sets, so this composes).
 T0 is the first-paint payload: **5.1 MB gets you every star a human has ever seen with
 the naked eye, plus the complete solar neighbourhood.** That is the demo.
 
+**What "complete" means, and where it stops.** All 625,680 stars are rendered — the
+naked-eye ones are only 1.9% of them, and 67% are fainter than G = 15. Exposure
+(§6.1) decides what is *visible*; nothing is dropped for being faint, and LOD merges
+rather than discards (§5.2). But T0's two clauses behave differently with distance:
+
+| Volume | Contents | Faintest |
+| --- | --- | --- |
+| inside 100 pc | 573,209 stars — everything Gaia sees | M_G 21.6 |
+| beyond 100 pc | 51,553 stars — only G < 8 | M_G 3.0 |
+
+So flying *within* 100 pc gives a dense, honest sky; flying *beyond* it thins to a
+scatter of luminous stars. That is a property of the tier, not the renderer, and no
+exposure setting fixes it. It is precisely what Step 2's T1 (35.4M) and Step 4's T3
+(320.5M) are for.
+
+Note also that "everything Gaia sees" is itself magnitude-limited at G ≈ 20.7 — inside
+100 pc that reaches M_G ≈ 15.7, so late M dwarfs and brown dwarfs are missing
+everywhere. There is no tier that fixes that one; it is the survey's floor.
+
 Two changes from the earlier poe > 5 draft worth noting. The old "T3 quality:
 poe > 10" tier is gone — at 98.3M stars it is now numerically indistinguishable from
 T2 (d < 1 kpc, 98.8M), so it earned no separate build; keep poe > 10 as a *filter
@@ -638,9 +657,9 @@ forget it.
 | 10 pc | +4.67 |
 | 100 pc | +9.67 |
 
-The naked-eye limit is m ≈ +6.5, so **the Sun becomes invisible beyond about 50 pc**
-— well inside T0's own 100 pc shell. Fly out thirty light years, turn around, and
-home is a dim unremarkable dot among thousands. Build that moment deliberately; it is
+The naked-eye limit is m ≈ +6.5, so **the Sun becomes invisible beyond 23.2 pc — just
+76 light years**, a quarter of the way to T0's own 100 pc shell. Fly out seventy light
+years, turn around, and home is already gone. Build that moment deliberately; it is
 the entire emotional payload of the project, and it costs nothing but a "look back"
 control.
 

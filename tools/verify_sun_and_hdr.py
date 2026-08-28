@@ -28,7 +28,9 @@ for label, d_pc in [("1 AU (Earth)", AU_M / PC_M), ("100 AU", 100 * AU_M / PC_M)
                     ("0.1 pc", 0.1), ("1 pc", 1.0), ("4.85 pc (nearest stars)", 4.85),
                     ("10 pc", 10.0), ("100 pc", 100.0)]:
     print(f"  {label:24s} m_G = {apparent(M_G_SUN, d_pc):+8.2f}")
-print("  naked-eye limit is m ~ +6.5: the Sun disappears from view beyond ~50 pc")
+naked_eye = 10 * 10 ** ((6.5 - M_G_SUN) / 5)
+print(f"  naked-eye limit is m ~ +6.5, so the Sun vanishes beyond "
+      f"{naked_eye:.1f} pc = {naked_eye * 3.26156:.0f} ly")
 
 print("\n=== 2. Point sprite -> resolved disc threshold ===")
 print(f"  at {FOV_DEG:.0f} deg FOV over {WIDTH_PX} px: {px_rad:.3e} rad/pixel")

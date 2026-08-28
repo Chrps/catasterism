@@ -10,6 +10,7 @@ import pyarrow.parquet as pq
 
 from catasterism.derive import derive
 from catasterism.release import ACTIVE
+from catasterism.sun import SUN_SOURCE_ID, apparent_magnitude, insert_sun
 from catasterism.tiers import TIERS
 
 tier = TIERS[sys.argv[1] if len(sys.argv) > 1 else "t0"]
@@ -28,6 +29,13 @@ print(f"  residual {fit.residual_dex:.4f} dex = {(10**fit.residual_dex - 1)*100:
 print("\nderived:")
 for k, v in stats.items():
     print(f"  {k:24} {v:,}" if isinstance(v, int) else f"  {k:24} {v:.4f}")
+
+# Gaia cannot observe the Sun, so it is inserted here rather than fetched.
+table = insert_sun(table)
+print(f"\ninserted the Sun as source_id {SUN_SOURCE_ID}: "
+      f"m_G {apparent_magnitude(4.67, 1.0 / 206264.806):.2f} from 1 AU, "
+      f"invisible beyond {10 * 10 ** ((6.5 - 4.67) / 5):.1f} pc")
+print(f"total {table.num_rows:,} rows")
 
 dest = out / f"{tier.slug}.parquet"
 pq.write_table(table, dest, compression="zstd")
