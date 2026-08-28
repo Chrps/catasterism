@@ -5,7 +5,7 @@
   "type": "module",
   "scripts": {
     "dev": "bun build src/main.ts --outdir dist --watch & bun --hot ./serve.ts",
-    "build": "bun build src/main.ts --outdir dist --minify --target browser && cp index.html dist/",
+    "build": "bun build src/main.ts --outdir dist --minify --target browser && cp index.html dist/ && cp public/* dist/",
     "typecheck": "tsc --noEmit",
     "test": "bun test"
   },

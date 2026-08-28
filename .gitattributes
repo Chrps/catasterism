@@ -1,0 +1,4 @@
+# Star records are packed binary. Never diff, never attempt a merge -- a
+# conflict here can only be resolved by rebuilding from the pipeline.
+*.bin binary
+client/public/*.bin binary linguist-generated=true

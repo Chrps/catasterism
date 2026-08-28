@@ -529,6 +529,24 @@ error. Note that `ag_gspphot` coverage is *exactly* the same 239,575,586 sources
 arrive and go missing together. The 25.2% without it need `A_G` from a 3D dust map
 along the line of sight, using the same machinery as the colour fallback in §4.2.
 
+#### Verified: the flight record renders stars without Earth's dust
+
+The algebra collapses neatly, and it is worth seeing because it confirms the two
+corrections compose correctly. Substituting `M_G = G + 5log₁₀(plx) − 10 − A_G`
+into `m = M_G + 5log₁₀(d/10)` with `d = 1000/plx` gives simply:
+
+```
+m = G − A_G
+```
+
+Measured on T0's most-reddened bright star: observed G = 4.318, A_G = 7.111, and
+the recomputed apparent magnitude is −2.793 — brighter than Sirius, because 7.1
+magnitudes of dust have been removed. Fly past the dust and the star really is
+that bright.
+
+That is correct for the flight record and **wrong for a view from Earth**, which
+is exactly why §3.3's planetarium layer stores raw observed values instead.
+
 #### The renderer's job
 
 ```
@@ -1134,8 +1152,22 @@ Zenodo  — versioned archival snapshot + DOI, so the derived catalogue is citab
 GitHub — the generator scripts, so the whole thing is reproducible from source
 ```
 
-Note the Git per-file hard limit of 100 MB — irrelevant now that only the 7 MB T0
-lives in the repo, but the reason T1 moved to R2. And **do not use Git LFS** — its free tier is 1 GB storage and 1 GB bandwidth *per
+**GitHub's 100 MB per-file hard limit decides this, not preference.** Measured
+against the tiers:
+
+| Tier | Stars | @16 B (Step 1) | @8 B (Step 2) | Committable? |
+| --- | --- | --- | --- | --- |
+| T0 | 623,457 | 10 MB | 5 MB | ✅ yes, permanently |
+| T1 | 35.4M | 567 MB | 283 MB | ❌ blocked outright |
+| T2 | 98.8M | 1.58 GB | 790 MB | ❌ |
+| T3 | 320.5M | 5.13 GB | 2.56 GB | ❌ |
+
+So **T0 lives in the repo forever and every other tier must be on R2** — and R2 is
+therefore needed at **Step 2**, when T1 arrives, not Step 4 as the roadmap says.
+Chunking T1 under 100 MB would technically pass but bloats history brutally, since
+each rebuild stores full copies of high-entropy data that does not delta.
+
+And **do not use Git LFS** — its free tier is 1 GB storage and 1 GB bandwidth *per
 month*, which this project would exhaust in a day.
 
 ### 7.3 Bandwidth reality check
