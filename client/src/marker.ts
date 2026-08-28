@@ -72,16 +72,21 @@ export class HomeMarker {
     this.root.style.cssText =
       "position:fixed;inset:0;pointer-events:none;font:11px/1 ui-monospace,monospace;color:#8ab4ff";
 
+    // A zero-size anchor sitting exactly on the projected point, with the ring
+    // and the label positioned off it independently. Centring a block that
+    // *contains* the label instead puts the ring half a label-height too high,
+    // which reads as the marker missing the star it is pointing at.
     this.dot = document.createElement("div");
-    this.dot.style.cssText =
-      "position:absolute;transform:translate(-50%,-50%);white-space:nowrap;text-align:center";
+    this.dot.style.cssText = "position:absolute;width:0;height:0";
     this.dot.innerHTML =
-      '<div style="width:15px;height:15px;border:1px solid currentColor;border-radius:50%;' +
-      'margin:0 auto 3px;opacity:.85"></div><span>Sol</span>';
+      '<div style="position:absolute;left:0;top:0;width:16px;height:16px;margin:-8px 0 0 -8px;' +
+      'box-sizing:border-box;' +
+      'border:1px solid currentColor;border-radius:50%;opacity:.85"></div>' +
+      '<span style="position:absolute;left:0;top:12px;transform:translateX(-50%);' +
+      'white-space:nowrap"></span>';
 
     this.arrow = document.createElement("div");
-    this.arrow.style.cssText =
-      "position:absolute;transform:translate(-50%,-50%);white-space:nowrap;text-align:center";
+    this.arrow.style.cssText = "position:absolute;width:0;height:0";
 
     this.root.append(this.dot, this.arrow);
     parent.append(this.root);
@@ -125,7 +130,9 @@ export class HomeMarker {
     this.arrow.style.left = `${x}px`;
     this.arrow.style.top = `${y}px`;
     this.arrow.innerHTML =
-      `<div style="transform:rotate(${angle}rad);font-size:15px;line-height:1">➤</div>` +
-      `<div style="margin-top:2px">Sol · ${distanceLabel}</div>`;
+      `<div style="position:absolute;left:0;top:0;transform:translate(-50%,-50%) ` +
+      `rotate(${angle}rad);font-size:15px;line-height:1">➤</div>` +
+      `<div style="position:absolute;left:0;top:11px;transform:translateX(-50%);` +
+      `white-space:nowrap">Sol · ${distanceLabel}</div>`;
   }
 }
