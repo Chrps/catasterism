@@ -83,12 +83,44 @@ One throwaway script producing one file. Correctness matters; elegance does not.
   hand-written rotation — it handles the frame definition and epoch propagation
   correctly, which matters at Step 3 when Hipparcos (J1991.25) is cross-matched
   against DR3 (J2016.0). T8's known-star assertions verify it either way.
-- Patch the handful of naked-eye stars Gaia saturates on (PLAN.md §1.4). At this size
-  a small hand-curated list is fine — the general Hipparcos merge is Step 3.
+- **Patch the bright stars Gaia cannot see** — task T3b. Originally Step 3; moved
+  here once testing showed the sky cannot be judged without it.
 - The Sun is task T3 — it needs more than a row in a table.
 
 **Done when:** a Parquet/CSV file of ~625,679 rows exists, and spot-checking Sirius,
 Vega, Betelgeuse and Proxima against SIMBAD agrees on distance and magnitude.
+
+---
+
+## T3b — Patch the bright stars Gaia cannot see
+
+Gaia saturates around G ≈ 3, so the stars that *define* constellations are exactly
+the ones it measures worst or not at all. Measured against Hipparcos:
+
+| | missing from Gaia DR3 |
+| --- | --- |
+| Hp < 3.0 | **108 of 165 (65%)** |
+| Hp < 4.5 | 311 of 837 (37%) |
+| Hp < 6.5 | 1,596 of 7,982 (20%) |
+
+All 25 of the brightest stars in the sky are absent, and Orion's belt survives as
+one star of three. This was Step 3 work until testing showed that T9's verdict —
+"does the sky look right" — cannot be reached without it.
+
+- Use **`gaiadr3.hipparcos2_best_neighbour`**, ESA's own cross-match, rather than
+  matching by position. Positional matching across a 25-year epoch gap silently
+  selects the wrong star, which is exactly the trap in PLAN.md §9 stage 2 step 7.
+- **Fit the colour transformations on the overlap**, not from a paper: 44,034 stars
+  are in both catalogues, which is ample to calibrate V + B−V → G and gives a
+  residual you can check. Sigma-clip first — 7.3% of the sample is variables,
+  unresolved binaries and bad photometry, and leaving them in inflates the scatter
+  from 0.04 mag to 0.30.
+- Propagate positions from Hipparcos's J1991.25 to the release epoch.
+- Carry them as **negative `source_id`** (`-hip`), which cannot collide with Gaia's
+  positive ids or the Sun's zero, and keeps the catalogue identity recoverable.
+
+**Done when:** Sirius, Vega, Rigel, Betelgeuse and all three belt stars render at
+roughly their real brightness.
 
 ---
 

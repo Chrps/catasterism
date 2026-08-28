@@ -8,6 +8,7 @@ from pathlib import Path
 import pyarrow.dataset as ds
 import pyarrow.parquet as pq
 
+from catasterism import bright_stars
 from catasterism.derive import derive
 from catasterism.release import ACTIVE
 from catasterism.sun import SUN_SOURCE_ID, apparent_magnitude, insert_sun
@@ -29,6 +30,18 @@ print(f"  residual {fit.residual_dex:.4f} dex = {(10**fit.residual_dex - 1)*100:
 print("\nderived:")
 for k, v in stats.items():
     print(f"  {k:24} {v:,}" if isinstance(v, int) else f"  {k:24} {v:.4f}")
+
+# Gaia saturates on the brightest stars, so the ones that define constellations
+# are exactly the ones it measures worst or not at all. Patch them from
+# Hipparcos before the Sun goes in.
+print("\nfetching bright stars Gaia cannot see...")
+missing, transform = bright_stars.fetch(ACTIVE)
+print(f"  {missing.num_rows:,} Hipparcos stars brighter than Hp {bright_stars.DEFAULT_MAGNITUDE_LIMIT}")
+print(f"  with no Gaia DR3 counterpart at all")
+print(f"  V->G fitted on {transform.n_calibrators:,} stars in both catalogues,")
+print(f"    {transform.n_clipped:,} outliers clipped, residual {transform.sigma_mag:.3f} mag")
+table = bright_stars.append_to(table, missing, transform, ACTIVE)
+print(f"  patched in; table now {table.num_rows:,} rows")
 
 # Gaia cannot observe the Sun, so it is inserted here rather than fetched.
 table = insert_sun(table)

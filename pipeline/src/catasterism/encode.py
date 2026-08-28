@@ -60,7 +60,12 @@ FLAG_EXTINCTION_APPLIED = 1 << 1
 """A_G was available and subtracted. Without it the star's intrinsic
 luminosity carries Earth's dust column (PLAN.md section 4.3)."""
 FLAG_SYNTHETIC = 1 << 2
-"""Not a Gaia source. The Sun, and later the Hipparcos bright-star patches."""
+"""Not a Gaia source: the Sun, inserted by hand at the origin."""
+
+FLAG_PATCHED = 1 << 3
+"""From Hipparcos, because Gaia saturates on it. Carried as a negative
+``source_id`` (``-hip``), which cannot collide with Gaia's positive ids or the
+Sun's zero, and keeps the catalogue identity recoverable."""
 
 APP_MAG_LEVELS = (1 << APP_MAGNITUDE_BITS) - 1
 NO_APPARENT_MAGNITUDE = 0xFFFF
@@ -131,6 +136,7 @@ def encode(table: pa.Table, release: Release) -> EncodeResult:
     a_g = table.column("extinction_g").to_numpy(zero_copy_only=False)[keep]
     flags |= np.where(np.isfinite(a_g), FLAG_EXTINCTION_APPLIED, 0).astype(np.uint32)
     flags |= np.where(source_id == SUN_SOURCE_ID, FLAG_SYNTHETIC, 0).astype(np.uint32)
+    flags |= np.where(source_id < 0, FLAG_PATCHED, 0).astype(np.uint32)
 
     packed = (
         (mag & MAG_MASK) << MAG_SHIFT
@@ -204,6 +210,7 @@ def encode(table: pa.Table, release: Release) -> EncodeResult:
         "teff_measured": int((flags & FLAG_TEFF_MEASURED).astype(bool).sum()),
         "extinction_applied": int((flags & FLAG_EXTINCTION_APPLIED).astype(bool).sum()),
         "synthetic": int((flags & FLAG_SYNTHETIC).astype(bool).sum()),
+        "hipparcos_patched": int((flags & FLAG_PATCHED).astype(bool).sum()),
     }
     stats["apparent_missing"] = int((apparent == NO_APPARENT_MAGNITUDE).sum())
     manifest["magnitude_clipped"] = clipped

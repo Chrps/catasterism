@@ -109,6 +109,16 @@ async function main(): Promise<void> {
   // Remembers what saturation was before snapping to the physically accurate
   // value, so t is a toggle rather than a one-way trip.
   let saturationBeforeTrue = 2;
+
+  // The view follows the mode, because each mode has exactly one honest answer:
+  // parked at Earth you want what Gaia observed, dust and all; flying you want
+  // intrinsic brightness, since the dust is no longer between you and the star.
+  // p overrides for a direct comparison, and changing mode clears the override.
+  let viewOverride: boolean | null =
+    params.has("earth") ? params.get("earth") === "1" : null;
+  const applyView = (): void => {
+    settings.earthView = viewOverride ?? camera.mode === "planetarium";
+  };
   const fixedExposure = params.has("exposure") ? param("exposure", 1) : null;
 
   const settings: RenderSettings = {
@@ -122,7 +132,8 @@ async function main(): Promise<void> {
     maxSizePx: 64,
     sizeGain: param("sizegain", 1),
     sigmaPx,
-    earthView: params.get("earth") === "1",
+    // Derived from the camera mode below, not set here.
+    earthView: false,
   };
 
   // --- input -------------------------------------------------------------
@@ -183,6 +194,8 @@ async function main(): Promise<void> {
       case "n": settings.sizeGain = Math.min(32, settings.sizeGain + 1); break;
       case "f":
         camera.mode = camera.mode === "flight" ? "planetarium" : "flight";
+        viewOverride = null;
+        applyView();
         if (camera.mode !== "flight" && document.pointerLockElement === canvas) {
           document.exitPointerLock();
         }
@@ -192,7 +205,8 @@ async function main(): Promise<void> {
       case "g": camera.flyTo(GALACTIC_CENTRE.position); break;
       // The Earth view only means anything from Earth, so it takes you there.
       case "p":
-        settings.earthView = !settings.earthView;
+        viewOverride = !settings.earthView;
+        applyView();
         if (settings.earthView) camera.flyTo(SOL.position);
         break;
       case ",": camera.speedGain = Math.max(0.25, camera.speedGain / 1.5); break;
@@ -225,8 +239,12 @@ async function main(): Promise<void> {
       `${stars.count.toLocaleString()} stars · loaded in ${loadMs.toFixed(0)} ms`,
       `${fps.toFixed(0)} fps · ${canvas.width}×${canvas.height}`,
       "",
-      row("view", settings.earthView ? "as seen from Earth" : "intrinsic", "p"),
       row("mode", flying ? "flight" : "planetarium", "f"),
+      row(
+        "showing",
+        settings.earthView ? "sky as seen from Earth" : "true brightness, no dust",
+        viewOverride === null ? "" : "p (overridden)",
+      ),
       row("from Sol", formatDistance(camera.distanceFromSolPc), ""),
       row("nearest", formatDistance(camera.nearest.distancePc), ""),
       // yaw and pitch ARE galactic longitude and latitude now that up is the
@@ -296,6 +314,7 @@ async function main(): Promise<void> {
     }
     requestAnimationFrame(frame);
   };
+  applyView();
   // Seed from the first scan so the opening frame is not a white flash.
   camera.update([0, 0, 0], 1 / 60);
   settings.exposure =
