@@ -49,9 +49,16 @@ export class Camera {
   fovYRadians = (60 * Math.PI) / 180;
   mode: Mode = "planetarium";
 
-  /** Multiplier on the speed law. 1.5/s puts the Sun's surface about 11 seconds
-   *  from the edge of T0. */
-  speedGain = 1.5;
+  /** Multiplier on the speed law. 3/s puts the Sun's surface about 5 seconds
+   *  from the edge of T0. Adjustable in flight, because the right value is a
+   *  matter of feel and nobody can pick it from arithmetic. */
+  speedGain = 3;
+
+  /** Held-boost multiplier. The exponential law is excellent at arriving
+   *  somewhere and deliberately unhurried at leaving, so a temporary multiplier
+   *  covers "get me across this gap now" without compromising the approach. */
+  boostFactor = 6;
+  boosting = false;
 
   nearest: NearestStar = { index: -1, distancePc: NEAREST_FLOOR_PC };
 
@@ -73,7 +80,7 @@ export class Camera {
 
   /** Metres per second is meaningless here; this is parsecs per second. */
   get speedPcPerSecond(): number {
-    return this.speedGain * this.smoothedNearestPc;
+    return this.speedGain * this.smoothedNearestPc * (this.boosting ? this.boostFactor : 1);
   }
 
   private scanNearest(): void {
@@ -146,12 +153,19 @@ export class Camera {
   }
 }
 
-/** Distance in whichever unit a human would actually use at that scale. */
+/**
+ * Distance in whichever unit a human would actually use at that scale.
+ *
+ * AU inside the solar system, light years out to the nearby stars because that
+ * is the unit people have a feel for, parsecs beyond ~30 pc because that is
+ * where the catalogue's own unit takes over and light-year counts stop meaning
+ * anything.
+ */
 export function formatDistance(parsecs: number): string {
   if (!Number.isFinite(parsecs)) return "—";
   const au = parsecs / PC_PER_AU;
   if (au < 1000) return `${au.toFixed(au < 10 ? 2 : 0)} AU`;
   const ly = parsecs * LY_PER_PC;
-  if (ly < 1000) return `${ly.toFixed(ly < 10 ? 2 : 1)} ly`;
+  if (ly < 100) return `${ly.toFixed(ly < 10 ? 2 : 1)} ly`;
   return `${parsecs.toFixed(parsecs < 100 ? 1 : 0)} pc`;
 }

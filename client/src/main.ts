@@ -97,10 +97,14 @@ async function main(): Promise<void> {
   );
   const settings: RenderSettings = {
     exposure: param("exposure", baseExposure),
-    saturation: param("saturation", 1), // physically honest default; PLAN.md §4.2
+    // Physically accurate is 1.0 and reads almost white (the Sun is CIELAB
+    // C* 6.4). 2.0 keeps the real ordering of colours while making the blue and
+    // amber ends actually legible -- exaggeration as a labelled choice, never
+    // baked into the data (PLAN.md §4.2). Press c to see the honest version.
+    saturation: param("saturation", 2),
     minSizePx: 2,
     maxSizePx: 64,
-    sizeGain: param("sizegain", 5),
+    sizeGain: param("sizegain", 1),
     sigmaPx,
   };
 
@@ -109,7 +113,8 @@ async function main(): Promise<void> {
   const AXES: Record<string, [number, number, number]> = {
     w: [0, 0, 1], s: [0, 0, -1],
     a: [-1, 0, 0], d: [1, 0, 0],
-    " ": [0, 1, 0], shift: [0, -1, 0],
+    e: [0, 1, 0], " ": [0, 1, 0],
+    q: [0, -1, 0],
   };
 
   // Pointer lock for flight, drag for a quick look around without committing.
@@ -127,10 +132,17 @@ async function main(): Promise<void> {
     if (document.pointerLockElement === canvas || dragging) camera.look(e.movementX, e.movementY);
   });
 
-  window.addEventListener("keyup", (e) => held.delete(e.key.toLowerCase()));
-  window.addEventListener("blur", () => held.clear());
+  window.addEventListener("keyup", (e) => {
+    held.delete(e.key.toLowerCase());
+    if (e.key === "Shift") camera.boosting = false;
+  });
+  window.addEventListener("blur", () => {
+    held.clear();
+    camera.boosting = false;
+  });
   window.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
+    if (e.key === "Shift") { camera.boosting = true; refreshHud(); return; }
     const key = e.key.toLowerCase();
     if (key in AXES) { held.add(key); e.preventDefault(); return; }
     switch (key) {
@@ -147,10 +159,12 @@ async function main(): Promise<void> {
         }
         break;
       case "h": camera.returnHome(); break;
+      case ",": camera.speedGain = Math.max(0.25, camera.speedGain / 1.5); break;
+      case ".": camera.speedGain = Math.min(64, camera.speedGain * 1.5); break;
       case "r":
         settings.exposure = baseExposure;
-        settings.saturation = 1;
-        settings.sizeGain = 5;
+        settings.saturation = 2;
+        settings.sizeGain = 1;
         break;
       default: return;
     }
@@ -178,9 +192,11 @@ async function main(): Promise<void> {
       row("mode", flying ? "flight" : "planetarium", "f"),
       row("from Sol", formatDistance(camera.distanceFromSolPc), ""),
       row("nearest", formatDistance(camera.nearest.distancePc), ""),
-      row("speed", `${formatDistance(camera.speedPcPerSecond)}/s`, ""),
+      row("speed", `${formatDistance(camera.speedPcPerSecond)}/s${camera.boosting ? "  BOOST" : ""}`, ""),
+      row("speed gain", camera.speedGain.toFixed(2), ", / ."),
       "",
-      row("move", flying ? "wasd space shift" : "—", ""),
+      row("move", flying ? "wasd  q/e" : "—", ""),
+      row("boost", flying ? "hold shift" : "—", ""),
       row("look", flying ? "mouse" : "drag", ""),
       row("home", "", "h"),
       "",
