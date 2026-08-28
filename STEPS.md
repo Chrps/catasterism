@@ -93,6 +93,9 @@ question as fast as possible.
    render. Moved here from Step 3 during testing: Gaia saturates around G ≈ 3, so
    **all 25 of the brightest stars in the sky are absent from DR3**, and without them
    criterion 3 above cannot be judged at all.
+9. **Constellation lines land on their stars.** The sharpest end-to-end check there
+   is: a line that touches its star validates coordinates, frame, epoch, magnitude,
+   the bright-star patch and the projection all at once.
 
 Tasks: [TASKS_STEP_1.md](TASKS_STEP_1.md).
 
@@ -263,7 +266,8 @@ Open-ended, ordered by value:
   low-frequency emissive volume, so the Galaxy looks like a galaxy from outside
   instead of ending abruptly at 2 kpc.
 - Interstellar dust and nebulae as volumetric structure.
-- Constellation lines and figures, on in planetarium mode.
+- Constellation *figures* — the artwork, as opposed to the stick-figure lines,
+  which moved to Step 1 as a verification tool.
 - Guided tours — "fly to Betelgeuse", "watch the Pleiades resolve".
 - Proper-motion time travel: scrub ±100,000 years and watch constellations dissolve.
   Needs `pmra`/`pmdec`/`radial_velocity` in an optional stream, +12 B/star.
