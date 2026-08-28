@@ -1152,8 +1152,22 @@ Zenodo  — versioned archival snapshot + DOI, so the derived catalogue is citab
 GitHub — the generator scripts, so the whole thing is reproducible from source
 ```
 
-Note the Git per-file hard limit of 100 MB — irrelevant now that only the 7 MB T0
-lives in the repo, but the reason T1 moved to R2. And **do not use Git LFS** — its free tier is 1 GB storage and 1 GB bandwidth *per
+**GitHub's 100 MB per-file hard limit decides this, not preference.** Measured
+against the tiers:
+
+| Tier | Stars | @16 B (Step 1) | @8 B (Step 2) | Committable? |
+| --- | --- | --- | --- | --- |
+| T0 | 623,457 | 10 MB | 5 MB | ✅ yes, permanently |
+| T1 | 35.4M | 567 MB | 283 MB | ❌ blocked outright |
+| T2 | 98.8M | 1.58 GB | 790 MB | ❌ |
+| T3 | 320.5M | 5.13 GB | 2.56 GB | ❌ |
+
+So **T0 lives in the repo forever and every other tier must be on R2** — and R2 is
+therefore needed at **Step 2**, when T1 arrives, not Step 4 as the roadmap says.
+Chunking T1 under 100 MB would technically pass but bloats history brutally, since
+each rebuild stores full copies of high-entropy data that does not delta.
+
+And **do not use Git LFS** — its free tier is 1 GB storage and 1 GB bandwidth *per
 month*, which this project would exhaust in a day.
 
 ### 7.3 Bandwidth reality check

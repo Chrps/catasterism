@@ -119,7 +119,9 @@ that LOD is mandatory, small enough to rebuild in minutes while iterating.
   GLSL, so generate that unpacker from the same definition (PLAN.md §5.5, §12.5c).
 - Streaming loader: screen-error priority queue, capped in-flight requests, velocity
   prefetch, parent-held-until-children-resident swap.
-- Cloudflare R2 bucket, custom domain, HTTP Range requests.
+- **Cloudflare R2 bucket**, custom domain, HTTP Range requests. Required here, not
+  later: T1 is 283 MB even at 8 B/star, past GitHub's 100 MB per-file hard limit
+  (PLAN.md §7.2). T0 stays in the repo permanently; nothing else can.
 - Service worker + IndexedDB tile cache (PLAN.md §7.4).
 - Validation suite (PLAN.md §10b): flux conservation, tile checksums, golden-image
   regression, plus the round-trip and known-star checks carried forward from Step 1.
