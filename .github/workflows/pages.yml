@@ -25,10 +25,15 @@ jobs:
     steps:
       - uses: actions/checkout@v7
       - uses: actions/setup-python@v7
-        with: { python-version: "3.12" }
+        with:
+          python-version: "3.12"
+          cache: pip
+          cache-dependency-path: pipeline/requirements.txt
+      # Install from the same file the dev container bakes in, so CI and the
+      # container cannot drift into testing different environments.
+      - run: pip install -r pipeline/requirements.txt
       # The DR4-readiness invariant is enforced here, not by discipline:
       # no Gaia release name may leak outside catasterism.release.
-      - run: pip install pytest
       - run: python -m pytest -q
         working-directory: pipeline
 

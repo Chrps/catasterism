@@ -77,8 +77,16 @@ asserted, not assumed. Break it and brightness pops on every LOD swap.
 
 ## Traps
 
-- **Adding more stars because it looks sparse.** Almost always a rendering
-  problem — exposure, bloom, sprite kernel — not a data one. Fix the render.
+- **Adding more stars because it looks sparse.** *Inside the complete volume*
+  this is a rendering problem — exposure, bloom, sprite kernel — not a data one.
+  Fix the render. But check which volume you are in first: T0 is complete only
+  inside 100 pc; beyond that it holds nothing fainter than G = 8, so it really
+  is sparse out there and no exposure setting fixes it. That is what Step 2's
+  tiers are for.
+- **Confusing "naked-eye" with "rendered".** Everything in a tier is rendered;
+  exposure decides what is *visible*, not what exists. Only 1.9% of T0 is
+  naked-eye visible and 67% is fainter than G = 15. Faint stars are never
+  dropped — LOD merges them into glow with flux conserved.
 - **Treating exposure and the point→disc transition as Sun-specific.** They are
   general consequences of free flight; the Sun is just where you notice first.
 - **Building the tile format before the renderer exists.** Deliberately deferred
