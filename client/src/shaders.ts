@@ -24,6 +24,7 @@ precision highp float;
 
 layout(location = 0) in vec3 aPositionParsec;   // galactic cartesian, absolute
 layout(location = 1) in uint aPacked;           // mag | colour | flags
+layout(location = 2) in float aApparentMag;     // observed G from Earth, NaN if none
 
 uniform mat4 uViewProjection;
 // The camera position is split into two float32s. A single one is not enough:
@@ -39,6 +40,8 @@ uniform float uMagLevels;
 uniform float uMinSizePx;
 uniform float uMaxSizePx;
 uniform float uSizeGain;
+// 0 = intrinsic (fly anywhere), 1 = the sky as observed from Earth.
+uniform float uEarthView;
 
 out float vFlux;      // total light this sprite must deposit
 out vec3 vColour;     // linear sRGB, unit luminance
@@ -61,6 +64,14 @@ void main() {
   // property of where the camera is, recomputed every frame (PLAN.md §4.3).
   float luminosity = pow(10.0, -0.4 * absMag);
   float flux = luminosity / max(distancePc * distancePc, 1e-12);
+
+  // The Earth view instead uses what Gaia actually measured: apparent magnitude
+  // with the dust still in it. No distance, no extinction correction, nothing
+  // derived -- so it is exact, and it is a genuinely different image rather
+  // than a rescaling. Stars Gaia has no magnitude for carry NaN and drop out.
+  bool hasApparent = !(aApparentMag != aApparentMag);
+  float earthFlux = hasApparent ? pow(10.0, -0.4 * aApparentMag) : 0.0;
+  flux = mix(flux, earthFlux, uEarthView);
 
   vFlux = flux * uExposure;
 

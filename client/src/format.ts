@@ -35,6 +35,14 @@ export interface Manifest {
     temperatures_k: number[];
     linear_srgb: number[][];
   };
+  /** Observed apparent G from Earth, stored as a plane after the records. */
+  apparent_magnitude_plane?: {
+    offset_bytes: number;
+    bits: number;
+    min: number;
+    max: number;
+    missing: number;
+  };
 }
 
 export interface Stars {
@@ -46,6 +54,10 @@ export interface Stars {
   absoluteMagnitude: Float32Array;
   colourIndex: Uint8Array;
   flags: Uint8Array;
+  /** Observed apparent G as Gaia measured it from Earth -- dust and all, so
+   *  exact, needing no distance estimate and no extinction correction. NaN
+   *  where Gaia has no magnitude, and for the hand-inserted Sun. */
+  apparentMagnitude: Float32Array;
   /** Linear sRGB per palette entry. Perceptually uniform along the Planckian
    *  locus, so 8 bits is visually lossless. */
   palette: Float32Array;
@@ -71,14 +83,14 @@ export function decode(buffer: ArrayBuffer, manifest: Manifest): Stars {
 
   const n = manifest.record_count;
   const stride = manifest.record_bytes / 4;
-  if (buffer.byteLength !== n * manifest.record_bytes) {
-    throw new Error(
-      `expected ${n * manifest.record_bytes} bytes, got ${buffer.byteLength}`,
-    );
+  const plane = manifest.apparent_magnitude_plane;
+  const expected = n * manifest.record_bytes + (plane ? n * 2 : 0);
+  if (buffer.byteLength !== expected) {
+    throw new Error(`expected ${expected} bytes, got ${buffer.byteLength}`);
   }
 
-  const words = new Uint32Array(buffer);
-  const floats = new Float32Array(buffer);
+  const words = new Uint32Array(buffer, 0, n * stride);
+  const floats = new Float32Array(buffer, 0, n * stride);
 
   // Positions are already interleaved xyz in the file, but every fourth word is
   // the packed attributes, so they need compacting before a GPU upload.
@@ -105,6 +117,19 @@ export function decode(buffer: ArrayBuffer, manifest: Manifest): Stars {
     flags[i] = (packed >>> m.flags.shift) & mask(m.flags.bits);
   }
 
+  const apparentMagnitude = new Float32Array(n);
+  if (plane) {
+    const levels = (1 << plane.bits) - 1;
+    const span = plane.max - plane.min;
+    const raw = new Uint16Array(buffer, plane.offset_bytes, n);
+    for (let i = 0; i < n; i++) {
+      const q = raw[i]!;
+      apparentMagnitude[i] = q === plane.missing ? NaN : plane.min + (q / levels) * span;
+    }
+  } else {
+    apparentMagnitude.fill(NaN);
+  }
+
   const palette = new Float32Array(manifest.colour_lut.size * 3);
   manifest.colour_lut.linear_srgb.forEach((rgb, i) => {
     palette[i * 3] = rgb[0]!;
@@ -112,7 +137,10 @@ export function decode(buffer: ArrayBuffer, manifest: Manifest): Stars {
     palette[i * 3 + 2] = rgb[2]!;
   });
 
-  return { count: n, positions, absoluteMagnitude, colourIndex, flags, palette, manifest };
+  return {
+    count: n, positions, absoluteMagnitude, apparentMagnitude,
+    colourIndex, flags, palette, manifest,
+  };
 }
 
 export async function load(stem: string): Promise<Stars> {

@@ -57,16 +57,21 @@ export class Camera {
   fovYRadians = (60 * Math.PI) / 180;
   mode: Mode = "planetarium";
 
-  /** Multiplier on the speed law. 3/s puts the Sun's surface about 5 seconds
-   *  from the edge of T0. Adjustable in flight, because the right value is a
-   *  matter of feel and nobody can pick it from arithmetic. */
-  speedGain = 3;
+  /** Multiplier on the speed law. Cruising is the default; 10/s puts the Sun's
+   *  surface about 1.6 seconds from the edge of T0. Adjustable in flight,
+   *  because the right value is a matter of feel, not arithmetic. */
+  speedGain = 10;
 
-  /** Held-boost multiplier. The exponential law is excellent at arriving
-   *  somewhere and deliberately unhurried at leaving, so a temporary multiplier
-   *  covers "get me across this gap now" without compromising the approach. */
-  boostFactor = 6;
-  boosting = false;
+  /**
+   * Held-precision divisor.
+   *
+   * Originally this was a boost, on the theory that the exponential law is
+   * unhurried at leaving. Testing said the opposite: the default felt slow, and
+   * what you actually want a modifier for is *arriving*. So cruise is now the
+   * default and the modifier is a brake.
+   */
+  precisionFactor = 8;
+  precise = false;
 
   nearest: NearestStar = { index: -1, distancePc: NEAREST_FLOOR_PC };
 
@@ -100,7 +105,7 @@ export class Camera {
 
   /** Metres per second is meaningless here; this is parsecs per second. */
   get speedPcPerSecond(): number {
-    return this.speedGain * this.smoothedNearestPc * (this.boosting ? this.boostFactor : 1);
+    return (this.speedGain * this.smoothedNearestPc) / (this.precise ? this.precisionFactor : 1);
   }
 
   /**
@@ -166,6 +171,7 @@ export class Camera {
         (Math.log(clamped) - Math.log(this.smoothedNearestPc)) * blend,
     );
 
+    if (this.followGoal(dt)) return;
     if (this.mode === "planetarium") return;
 
     const [mx, my, mz] = move;
@@ -185,8 +191,67 @@ export class Camera {
     this.pitch = Math.max(-limit, Math.min(limit, this.pitch - deltaY * sensitivity));
   }
 
+  /**
+   * Destination for an automatic flight, or null when flying manually.
+   *
+   * Flying rather than teleporting on purpose: the journey is the part worth
+   * seeing. Watching the field stream past on the way to the galactic centre
+   * tells you something about the scale that arriving instantly does not.
+   */
+  private goal: { position: [number, number, number]; arriveWithinPc: number } | null = null;
+
+  flyTo(position: [number, number, number], arriveWithinPc = 0): void {
+    this.goal = { position, arriveWithinPc };
+    this.mode = "flight";
+  }
+
+  get autoFlying(): boolean {
+    return this.goal !== null;
+  }
+
+  cancelFlyTo(): void {
+    this.goal = null;
+  }
+
+  /** Steer and move toward the current goal. Returns true while still flying. */
+  private followGoal(dt: number): boolean {
+    if (!this.goal) return false;
+    const [gx, gy, gz] = this.goal.position;
+    const dx = gx - this.position[0];
+    const dy = gy - this.position[1];
+    const dz = gz - this.position[2];
+    const remaining = Math.hypot(dx, dy, dz);
+    if (remaining <= Math.max(this.goal.arriveWithinPc, 1e-9)) {
+      this.position = [...this.goal.position];
+      this.goal = null;
+      return false;
+    }
+
+    // Turn to face the target, easing so it does not snap.
+    const targetYaw = Math.atan2(dy, dx);
+    const targetPitch = Math.asin(Math.max(-1, Math.min(1, dz / remaining)));
+    const turn = 1 - Math.exp(-dt * 4);
+    let deltaYaw = targetYaw - this.yaw;
+    while (deltaYaw > Math.PI) deltaYaw -= 2 * Math.PI;
+    while (deltaYaw < -Math.PI) deltaYaw += 2 * Math.PI;
+    this.yaw += deltaYaw * turn;
+    this.pitch += (targetPitch - this.pitch) * turn;
+
+    // Ease in and out: proportional to whichever is smaller, the distance
+    // covered or the distance left. Without the second term the arrival is a
+    // wall; without the first the departure is a lurch.
+    const travelled = Math.max(remaining * 0.02, 1e-6);
+    const speed = Math.min(remaining, travelled * 40) * 2.5 + this.speedPcPerSecond;
+    const step = Math.min(speed * dt, remaining);
+    this.position[0] += (dx / remaining) * step;
+    this.position[1] += (dy / remaining) * step;
+    this.position[2] += (dz / remaining) * step;
+    return true;
+  }
+
   returnHome(): void {
     this.position = [0, 0, 0];
+    this.goal = null;
     this.mode = "planetarium";
   }
 }

@@ -13,7 +13,14 @@ from pathlib import Path
 import numpy as np
 import pytest
 
-from catasterism.constants import ABS_MAG_MAX, ABS_MAG_MIN, MAGNITUDE_BITS
+from catasterism.constants import (
+    ABS_MAG_MAX,
+    ABS_MAG_MIN,
+    APP_MAG_MAX,
+    APP_MAG_MIN,
+    APP_MAGNITUDE_BITS,
+    MAGNITUDE_BITS,
+)
 from catasterism.encode import (
     FLAG_SYNTHETIC,
     MAGIC,
@@ -107,8 +114,43 @@ def test_the_sun_survives_encoding(built):
 
 @needs_data
 def test_record_size_and_count(built):
+    """Records, then the apparent-magnitude plane appended after them."""
     _, r = built
-    assert len(r.data) == r.manifest["record_count"] * RECORD_BYTES
+    n = r.manifest["record_count"]
+    plane = r.manifest["apparent_magnitude_plane"]
+    assert plane["offset_bytes"] == n * RECORD_BYTES
+    assert len(r.data) == n * RECORD_BYTES + n * 2
+
+
+@needs_data
+def test_apparent_magnitude_is_what_gaia_observed(built):
+    """The planetarium view stores raw observed G -- no distance estimate, no
+    extinction correction -- so it must round-trip to the catalogue value."""
+    table, r = built
+    d = decode(r.data, r.manifest)
+    g = lambda n: table.column(n).to_numpy(zero_copy_only=False).astype(np.float64)
+    keep = (
+        np.isfinite(g("x_pc")) & np.isfinite(g("y_pc"))
+        & np.isfinite(g("z_pc")) & np.isfinite(g("abs_g"))
+    )
+    observed = g("phot_g_mean_mag")[keep]
+    got = d["apparent_g"]
+    step = (APP_MAG_MAX - APP_MAG_MIN) / ((1 << APP_MAGNITUDE_BITS) - 1)
+    both = np.isfinite(got) & np.isfinite(observed)
+    assert np.abs(got[both] - observed[both]).max() <= step / 2 + 1e-9
+
+
+@needs_data
+def test_the_sun_is_absent_from_the_earth_view(built):
+    """At m = -26.9 from Earth the Sun would set the exposure for the entire
+    night sky. You do not see it in one, so it carries no apparent magnitude."""
+    _, r = built
+    d = decode(r.data, r.manifest)
+    sun = np.flatnonzero(d["flags"] & FLAG_SYNTHETIC)
+    assert len(sun) == 1
+    assert np.isnan(d["apparent_g"][int(sun[0])])
+    # and it is the only one missing, so nothing else silently dropped out
+    assert int(np.isnan(d["apparent_g"]).sum()) == r.stats["apparent_missing"] == 1
 
 
 @needs_data

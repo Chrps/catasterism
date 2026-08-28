@@ -27,6 +27,15 @@
       }
     }
   },
+  "apparent_magnitude_plane": {
+    "offset_bytes": 9975312,
+    "bits": 12,
+    "dtype": "uint16",
+    "min": -2.0,
+    "max": 22.0,
+    "missing": 65535,
+    "description": "observed Gaia G from Earth; exact, uncorrected"
+  },
   "colour_lut": {
     "size": 256,
     "spacing": "perceptually uniform along the Planckian locus",
