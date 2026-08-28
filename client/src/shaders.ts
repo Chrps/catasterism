@@ -26,7 +26,12 @@ layout(location = 0) in vec3 aPositionParsec;   // galactic cartesian, absolute
 layout(location = 1) in uint aPacked;           // mag | colour | flags
 
 uniform mat4 uViewProjection;
-uniform vec3 uCameraParsec;
+// The camera position is split into two float32s. A single one is not enough:
+// at 100 pc its ulp is 1.6 AU, so camera motion finer than that vanishes in the
+// subtract and the view stalls then jumps. (starPos - hi) cancels the shared
+// magnitude exactly, and subtracting lo restores the fine offset.
+uniform vec3 uCameraHi;
+uniform vec3 uCameraLo;
 uniform float uExposure;
 uniform float uMagMin;
 uniform float uMagSpan;
@@ -43,7 +48,7 @@ uniform sampler2D uPalette;
 
 void main() {
   // Camera-relative first: everything downstream stays near the origin.
-  vec3 rel = aPositionParsec - uCameraParsec;
+  vec3 rel = (aPositionParsec - uCameraHi) - uCameraLo;
   float distancePc = length(rel);
 
   uint magQ = (aPacked >> 20) & 0xFFFu;

@@ -33,7 +33,7 @@ export interface RenderSettings {
 }
 
 const STAR_UNIFORMS = [
-  "uViewProjection", "uCameraParsec", "uExposure", "uMagMin", "uMagSpan",
+  "uViewProjection", "uCameraHi", "uCameraLo", "uExposure", "uMagMin", "uMagSpan",
   "uMagLevels", "uMinSizePx", "uMaxSizePx", "uSizeGain", "uSigmaPx", "uPalette",
 ] as const;
 
@@ -163,7 +163,17 @@ export class Renderer {
 
     gl.useProgram(this.starProgram);
     gl.uniformMatrix4fv(this.starUniforms["uViewProjection"]!, false, viewProjection);
-    gl.uniform3f(this.starUniforms["uCameraParsec"]!, ...camera.position);
+    // Split in float64 on the CPU, which is the only place that precision
+    // exists. Math.fround gives the float32 the GPU will actually see, so the
+    // remainder is exactly what the shader needs to add back.
+    const hi = camera.position.map((v) => Math.fround(v)) as [number, number, number];
+    gl.uniform3f(this.starUniforms["uCameraHi"]!, hi[0], hi[1], hi[2]);
+    gl.uniform3f(
+      this.starUniforms["uCameraLo"]!,
+      Math.fround(camera.position[0] - hi[0]),
+      Math.fround(camera.position[1] - hi[1]),
+      Math.fround(camera.position[2] - hi[2]),
+    );
     gl.uniform1f(this.starUniforms["uExposure"]!, settings.exposure);
     gl.uniform1f(this.starUniforms["uMagMin"]!, this.magMin);
     gl.uniform1f(this.starUniforms["uMagSpan"]!, this.magSpan);
