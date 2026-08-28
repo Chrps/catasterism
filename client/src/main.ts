@@ -8,6 +8,7 @@
 
 import { Camera, formatDistance } from "./camera";
 import { load } from "./format";
+import { HomeMarker } from "./marker";
 import { Renderer, type RenderSettings } from "./renderer";
 
 const CATALOGUE_VERSION = "dr3-v1";
@@ -20,33 +21,21 @@ function fail(hud: HTMLElement, message: string): never {
 }
 
 /**
- * Pick an exposure that puts the sky in range on the first frame.
+ * Exposure that puts the current view in range.
  *
- * Free flight spans 10^20 in apparent brightness (PLAN.md §6.1), so there is no
- * universal constant here. Aim the *bright tail* at roughly 1.0 in the
- * accumulation buffer: bright enough that the familiar stars register, dim
- * enough that they do not all saturate into white blobs.
+ * No fixed value survives flying at a star: at 1 AU the Sun is 4x10^10 times
+ * brighter than the sky, whiting out every pixel it touches. So exposure has to
+ * track the view rather than the catalogue -- aim the *bright tail* at a target
+ * peak and recompute as the camera moves.
+ *
+ * Anything far below the resulting floor then vanishes, which is correct. You
+ * cannot see stars in daylight either (PLAN.md 6.1).
  */
-function defaultExposure(
-  positions: Float32Array,
-  absoluteMagnitude: Float32Array,
-  count: number,
-  sigmaPx: number,
-  targetPeak: number,
-): number {
-  const sample: number[] = [];
-  const stride = Math.max(1, Math.floor(count / 20000));
-  for (let i = 0; i < count; i += stride) {
-    const d = Math.hypot(positions[i * 3]!, positions[i * 3 + 1]!, positions[i * 3 + 2]!);
-    if (d > 0) sample.push(10 ** (-0.4 * absoluteMagnitude[i]!) / (d * d));
-  }
-  if (sample.length === 0) return 1;
-  sample.sort((a, b) => a - b);
-  const bright = sample[Math.floor(sample.length * 0.9995)] ?? sample[sample.length - 1]!;
-  // Aim the *peak pixel* of a bright star at targetPeak, not its total flux.
-  // The kernel spreads flux over 2*pi*sigma^2, so that area has to be undone
-  // here or the brightest stars come out grey.
-  return (targetPeak * 2 * Math.PI * sigmaPx * sigmaPx) / Math.max(bright, 1e-30);
+function exposureFor(brightFlux: number, sigmaPx: number, targetPeak: number): number {
+  // Aim the *peak pixel* of a bright star at targetPeak, not its total flux:
+  // the kernel spreads flux over 2*pi*sigma^2, and not undoing that area leaves
+  // the brightest stars grey.
+  return (targetPeak * 2 * Math.PI * sigmaPx * sigmaPx) / Math.max(brightFlux, 1e-30);
 }
 
 async function main(): Promise<void> {
@@ -77,8 +66,9 @@ async function main(): Promise<void> {
   sizeCanvas();
 
   const renderer = new Renderer(gl, stars, canvas.width, canvas.height);
+  const marker = new HomeMarker(document.body);
 
-  const camera = new Camera(stars.positions, stars.count);
+  const camera = new Camera(stars.positions, stars.absoluteMagnitude, stars.count);
 
   // Overridable from the query string: ?saturation=4&exposure=1e5. Makes a
   // particular view shareable, and lets the headless harness exercise settings
@@ -92,11 +82,15 @@ async function main(): Promise<void> {
   };
 
   const sigmaPx = param("sigma", 1.1);
-  const baseExposure = defaultExposure(
-    stars.positions, stars.absoluteMagnitude, stars.count, sigmaPx, 3,
-  );
+  const TARGET_PEAK = 3;
+  // A manual trim on top of the automatic value, rather than an absolute
+  // setting -- otherwise the user is fighting the auto-exposure rather than
+  // steering it.
+  let exposureBias = param("bias", 1);
+  const fixedExposure = params.has("exposure") ? param("exposure", 1) : null;
+
   const settings: RenderSettings = {
-    exposure: param("exposure", baseExposure),
+    exposure: 1,
     // Physically accurate is 1.0 and reads almost white (the Sun is CIELAB
     // C* 6.4). 2.0 keeps the real ordering of colours while making the blue and
     // amber ends actually legible -- exaggeration as a labelled choice, never
@@ -146,8 +140,8 @@ async function main(): Promise<void> {
     const key = e.key.toLowerCase();
     if (key in AXES) { held.add(key); e.preventDefault(); return; }
     switch (key) {
-      case "z": settings.exposure /= 1.6; break;
-      case "x": settings.exposure *= 1.6; break;
+      case "z": exposureBias /= 1.6; break;
+      case "x": exposureBias *= 1.6; break;
       case "c": settings.saturation = Math.max(0, settings.saturation - 0.25); break;
       case "v": settings.saturation = Math.min(8, settings.saturation + 0.25); break;
       case "b": settings.sizeGain = Math.max(0, settings.sizeGain - 1); break;
@@ -162,7 +156,7 @@ async function main(): Promise<void> {
       case ",": camera.speedGain = Math.max(0.25, camera.speedGain / 1.5); break;
       case ".": camera.speedGain = Math.min(64, camera.speedGain * 1.5); break;
       case "r":
-        settings.exposure = baseExposure;
+        exposureBias = 1;
         settings.saturation = 2;
         settings.sizeGain = 1;
         break;
@@ -200,7 +194,8 @@ async function main(): Promise<void> {
       row("look", flying ? "mouse" : "drag", ""),
       row("home", "", "h"),
       "",
-      row("exposure", settings.exposure.toExponential(2), "z / x"),
+      row("exposure", `${settings.exposure.toExponential(1)} ${fixedExposure === null ? "auto" : "fixed"}`, ""),
+      row("brightness", `${exposureBias.toFixed(2)}x`, "z / x"),
       row("saturation", settings.saturation.toFixed(2), "c / v"),
       row("star size", settings.sizeGain.toFixed(0), "b / n"),
       row("reset view", "", "r"),
@@ -219,9 +214,19 @@ async function main(): Promise<void> {
     }
     camera.update(move, dt);
 
+    // Auto-exposure follows the camera. Smoothed in log space because it spans
+    // decades, and slowly enough that a bright star entering the view dims the
+    // sky over about a second rather than snapping.
+    const wanted = fixedExposure ?? exposureFor(camera.brightFlux, sigmaPx, TARGET_PEAK) * exposureBias;
+    const adapt = 1 - Math.exp(-dt * 2.5);
+    settings.exposure = Math.exp(
+      Math.log(settings.exposure) + (Math.log(wanted) - Math.log(settings.exposure)) * adapt,
+    );
+
     sizeCanvas();
     renderer.resize(canvas.width, canvas.height);
     renderer.render(camera, settings);
+    marker.update(camera, canvas.width, canvas.height, formatDistance(camera.distanceFromSolPc));
 
     frames++;
     if (now - fpsWindowStart >= 250) {
@@ -232,6 +237,10 @@ async function main(): Promise<void> {
     }
     requestAnimationFrame(frame);
   };
+  // Seed from the first scan so the opening frame is not a white flash.
+  camera.update([0, 0, 0], 1 / 60);
+  settings.exposure =
+    fixedExposure ?? exposureFor(camera.brightFlux, sigmaPx, TARGET_PEAK) * exposureBias;
   refreshHud();
   requestAnimationFrame(frame);
 }
