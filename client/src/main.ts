@@ -83,13 +83,27 @@ async function main(): Promise<void> {
     pitch: 0,
     fovYRadians: (60 * Math.PI) / 180,
   };
-  const sigmaPx = 1.1;
+  // Overridable from the query string: ?saturation=4&exposure=1e5. Makes a
+  // particular view shareable, and lets the headless harness exercise settings
+  // that would otherwise need a keypress.
+  const params = new URLSearchParams(window.location.search);
+  const param = (name: string, fallback: number): number => {
+    const raw = params.get(name);
+    if (raw === null) return fallback;
+    const value = Number(raw);
+    return Number.isFinite(value) ? value : fallback;
+  };
+
+  const sigmaPx = param("sigma", 1.1);
+  const baseExposure = defaultExposure(
+    stars.positions, stars.absoluteMagnitude, stars.count, sigmaPx, 3,
+  );
   const settings: RenderSettings = {
-    exposure: defaultExposure(stars.positions, stars.absoluteMagnitude, stars.count, sigmaPx, 3),
-    saturation: 1, // physically honest default; PLAN.md §4.2
+    exposure: param("exposure", baseExposure),
+    saturation: param("saturation", 1), // physically honest default; PLAN.md §4.2
     minSizePx: 2,
     maxSizePx: 64,
-    sizeGain: 5,
+    sizeGain: param("sizegain", 5),
     sigmaPx,
   };
 
@@ -108,21 +122,52 @@ async function main(): Promise<void> {
     const limit = Math.PI / 2 - 0.001;
     camera.pitch = Math.max(-limit, Math.min(limit, camera.pitch - e.movementY * 0.003));
   });
+  // Bottom-row letters, deliberately: brackets and equals need AltGr on Nordic
+  // and several other layouts, so they are unreachable for a lot of people.
+  // z x c v b n sit in the same physical place on every Latin layout and are
+  // adjacent, which makes them easy to find without looking.
   window.addEventListener("keydown", (e) => {
-    if (e.key === "+" || e.key === "=") settings.exposure *= 1.6;
-    else if (e.key === "-" || e.key === "_") settings.exposure /= 1.6;
-    else if (e.key === "[") settings.saturation = Math.max(0, settings.saturation - 0.25);
-    else if (e.key === "," ) settings.sizeGain = Math.max(0, settings.sizeGain - 1);
-    else if (e.key === "." ) settings.sizeGain = Math.min(32, settings.sizeGain + 1);
-    else if (e.key === "]") settings.saturation = Math.min(8, settings.saturation + 0.25);
-    else return;
+    if (e.ctrlKey || e.metaKey || e.altKey) return;
+    switch (e.key.toLowerCase()) {
+      case "z": settings.exposure /= 1.6; break;
+      case "x": settings.exposure *= 1.6; break;
+      case "c": settings.saturation = Math.max(0, settings.saturation - 0.25); break;
+      case "v": settings.saturation = Math.min(8, settings.saturation + 0.25); break;
+      case "b": settings.sizeGain = Math.max(0, settings.sizeGain - 1); break;
+      case "n": settings.sizeGain = Math.min(32, settings.sizeGain + 1); break;
+      case "r":
+        settings.exposure = baseExposure;
+        settings.saturation = 1;
+        settings.sizeGain = 5;
+        break;
+      default: return;
+    }
     e.preventDefault();
+    refreshHud();
   });
+
   window.addEventListener("resize", sizeCanvas);
 
   let frames = 0;
   let fpsWindowStart = performance.now();
   let fps = 0;
+
+  const row = (label: string, value: string, keys: string): string =>
+    `${label.padEnd(11)}${value.padEnd(12)}${keys}`;
+
+  const refreshHud = (): void => {
+    hud.textContent = [
+      `catasterism · ${stars.manifest.catalogue_version}`,
+      `${stars.count.toLocaleString()} stars · loaded in ${loadMs.toFixed(0)} ms`,
+      `${fps.toFixed(0)} fps · ${canvas.width}×${canvas.height}`,
+      "",
+      row("exposure", settings.exposure.toExponential(2), "z / x"),
+      row("saturation", settings.saturation.toFixed(2), "c / v"),
+      row("star size", settings.sizeGain.toFixed(0), "b / n"),
+      row("reset", "", "r"),
+      row("look", "", "drag"),
+    ].join("\n");
+  };
 
   const frame = (): void => {
     sizeCanvas();
@@ -135,18 +180,11 @@ async function main(): Promise<void> {
       fps = (frames * 1000) / (now - fpsWindowStart);
       frames = 0;
       fpsWindowStart = now;
-      hud.textContent = [
-        `catasterism · ${stars.manifest.catalogue_version}`,
-        `${stars.count.toLocaleString()} stars · loaded in ${loadMs.toFixed(0)} ms`,
-        `${fps.toFixed(0)} fps · ${canvas.width}×${canvas.height}`,
-        `exposure ${settings.exposure.toExponential(2)}  [+/-]`,
-        `saturation ${settings.saturation.toFixed(2)}  [ [ / ] ]`,
-        `size gain ${settings.sizeGain.toFixed(0)}  [ , / . ]`,
-        `drag to look around`,
-      ].join("\n");
+      refreshHud();
     }
     requestAnimationFrame(frame);
   };
+  refreshHud();
   requestAnimationFrame(frame);
 }
 
