@@ -60,6 +60,14 @@ test("fingerprint matches the Python encoder", () => {
     sum_colour_index: colour,
     sum_flags: flags,
   };
+  // Hardcoded on purpose: if the encoder changes, this and the Python side must
+  // be updated together, which is what keeps the two implementations honest.
   console.log("TS fingerprint:", JSON.stringify(fp));
-  expect(fp.count).toBeGreaterThan(0);
+  expect(fp).toEqual({
+    count: 625049,
+    sum_x: 17473423.431,
+    sum_abs_g: 7244935.6,
+    sum_colour_index: 75684316,
+    sum_flags: 441317,
+  });
 });

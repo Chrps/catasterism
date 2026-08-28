@@ -50,3 +50,11 @@ FLAG_BITS = 8
 # stars whose poor parallaxes yield impossibly luminous M_G. Step 3's Hipparcos
 # patching is what fixes those, not a wider range.
 ABS_MAG_MIN, ABS_MAG_MAX = -15.0, 22.0
+
+# Observed apparent G, for the planetarium view. This is what Gaia measured from
+# Earth -- dust and all -- and is therefore exact, needing no distance estimate
+# and no extinction correction (PLAN.md 4.3). T0's real range is 1.73 to 21.31
+# once the hand-inserted Sun is excluded; the bounds below leave headroom for
+# brighter stars that later tiers or the Hipparcos patch will add.
+APP_MAG_MIN, APP_MAG_MAX = -2.0, 22.0
+APP_MAGNITUDE_BITS = 12

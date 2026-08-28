@@ -165,7 +165,9 @@ at this cut**, not a corner case — build and validate it early (§4.7 shows ho
 Of the 12,119 sources brighter than G = 6.5, only 11,752 pass `poe > 3`. Gaia
 saturates on the brightest stars: **~400 naked-eye stars, including famous ones,
 have degraded or missing astrometry.** These are exactly the stars a user will look
-for first. They must be patched in from Hipparcos / the Bright Star Catalogue.
+for first. They must be patched in from Hipparcos / the Bright Star Catalogue —
+work that moved into **Step 1** once testing showed the sky cannot be judged
+without it.
 
 Confirmed concretely while validating T0: SIMBAD holds **no Gaia DR3 identifier at
 all** for Sirius, Vega, Altair, Arcturus or Pollux. Five of the most recognisable

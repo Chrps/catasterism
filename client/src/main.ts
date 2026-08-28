@@ -90,10 +90,35 @@ async function main(): Promise<void> {
 
   const sigmaPx = param("sigma", 1.1);
   const TARGET_PEAK = 3;
+  // The Earth view's brightnesses are fixed -- they do not change as the camera
+  // moves, because they are what Gaia measured from one place. So its exposure
+  // reference is computed once rather than tracked.
+  const earthBright = ((): number => {
+    const flux: number[] = [];
+    for (let i = 0; i < stars.count; i++) {
+      const m = stars.apparentMagnitude[i]!;
+      if (Number.isFinite(m)) flux.push(10 ** (-0.4 * m));
+    }
+    flux.sort((a, b) => b - a);
+    return flux[Math.min(47, flux.length - 1)] ?? 1;
+  })();
   // A manual trim on top of the automatic value, rather than an absolute
   // setting -- otherwise the user is fighting the auto-exposure rather than
   // steering it.
   let exposureBias = param("bias", 1);
+  // Remembers what saturation was before snapping to the physically accurate
+  // value, so t is a toggle rather than a one-way trip.
+  let saturationBeforeTrue = 2;
+
+  // The view follows the mode, because each mode has exactly one honest answer:
+  // parked at Earth you want what Gaia observed, dust and all; flying you want
+  // intrinsic brightness, since the dust is no longer between you and the star.
+  // p overrides for a direct comparison, and changing mode clears the override.
+  let viewOverride: boolean | null =
+    params.has("earth") ? params.get("earth") === "1" : null;
+  const applyView = (): void => {
+    settings.earthView = viewOverride ?? camera.mode === "planetarium";
+  };
   const fixedExposure = params.has("exposure") ? param("exposure", 1) : null;
 
   const settings: RenderSettings = {
@@ -107,6 +132,8 @@ async function main(): Promise<void> {
     maxSizePx: 64,
     sizeGain: param("sizegain", 1),
     sigmaPx,
+    // Derived from the camera mode below, not set here.
+    earthView: false,
   };
 
   // --- input -------------------------------------------------------------
@@ -135,15 +162,15 @@ async function main(): Promise<void> {
 
   window.addEventListener("keyup", (e) => {
     held.delete(e.key.toLowerCase());
-    if (e.key === "Shift") camera.boosting = false;
+    if (e.key === "Shift") camera.precise = false;
   });
   window.addEventListener("blur", () => {
     held.clear();
-    camera.boosting = false;
+    camera.precise = false;
   });
   window.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    if (e.key === "Shift") { camera.boosting = true; refreshHud(); return; }
+    if (e.key === "Shift") { camera.precise = true; refreshHud(); return; }
     const key = e.key.toLowerCase();
     if (key in AXES) { held.add(key); e.preventDefault(); return; }
     switch (key) {
@@ -151,15 +178,37 @@ async function main(): Promise<void> {
       case "x": exposureBias *= 1.6; break;
       case "c": settings.saturation = Math.max(0, settings.saturation - 0.25); break;
       case "v": settings.saturation = Math.min(8, settings.saturation + 0.25); break;
+      // Snap to physically accurate colour. Real stars are nearly white -- the
+      // Sun sits at CIELAB C* 6.4 -- so 1.0 looks washed out next to what people
+      // expect. Worth being able to see the truth in one keystroke rather than
+      // stepping there and losing your place.
+      case "t":
+        if (settings.saturation === 1) {
+          settings.saturation = saturationBeforeTrue;
+        } else {
+          saturationBeforeTrue = settings.saturation;
+          settings.saturation = 1;
+        }
+        break;
       case "b": settings.sizeGain = Math.max(0, settings.sizeGain - 1); break;
       case "n": settings.sizeGain = Math.min(32, settings.sizeGain + 1); break;
       case "f":
         camera.mode = camera.mode === "flight" ? "planetarium" : "flight";
+        viewOverride = null;
+        applyView();
         if (camera.mode !== "flight" && document.pointerLockElement === canvas) {
           document.exitPointerLock();
         }
         break;
-      case "h": camera.returnHome(); break;
+      // Fly rather than teleport: the journey is the part worth seeing.
+      case "h": camera.flyTo(SOL.position); break;
+      case "g": camera.flyTo(GALACTIC_CENTRE.position); break;
+      // The Earth view only means anything from Earth, so it takes you there.
+      case "p":
+        viewOverride = !settings.earthView;
+        applyView();
+        if (settings.earthView) camera.flyTo(SOL.position);
+        break;
       case ",": camera.speedGain = Math.max(0.25, camera.speedGain / 1.5); break;
       case ".": camera.speedGain = Math.min(64, camera.speedGain * 1.5); break;
       case "r":
@@ -181,7 +230,7 @@ async function main(): Promise<void> {
   let previous = performance.now();
 
   const row = (label: string, value: string, keys: string): string =>
-    `${label.padEnd(11)}${value.padEnd(14)}${keys}`;
+    `${label.padEnd(11)}${value.padEnd(20)}${keys}`;
 
   const refreshHud = (): void => {
     const flying = camera.mode === "flight";
@@ -191,6 +240,11 @@ async function main(): Promise<void> {
       `${fps.toFixed(0)} fps · ${canvas.width}×${canvas.height}`,
       "",
       row("mode", flying ? "flight" : "planetarium", "f"),
+      row(
+        "showing",
+        settings.earthView ? "sky as seen from Earth" : "true brightness, no dust",
+        viewOverride === null ? "" : "p (overridden)",
+      ),
       row("from Sol", formatDistance(camera.distanceFromSolPc), ""),
       row("nearest", formatDistance(camera.nearest.distancePc), ""),
       // yaw and pitch ARE galactic longitude and latitude now that up is the
@@ -200,17 +254,22 @@ async function main(): Promise<void> {
         `l ${(((camera.yaw * 180) / Math.PI) % 360 + 360) % 360 | 0}°  b ${((camera.pitch * 180) / Math.PI).toFixed(0)}°`,
         "",
       ),
-      row("speed", `${formatDistance(camera.speedPcPerSecond)}/s${camera.boosting ? "  BOOST" : ""}`, ""),
+      row("speed", `${formatDistance(camera.speedPcPerSecond)}/s${camera.precise ? "  precise" : ""}`, ""),
       row("speed gain", camera.speedGain.toFixed(2), ", / ."),
       "",
       row("move", flying ? "wasd  q/e" : "—", ""),
-      row("boost", flying ? "hold shift" : "—", ""),
+      row("precision", flying ? "hold shift" : "—", ""),
+      row("fly to", "Sol / centre", "h / g"),
       row("look", flying ? "mouse" : "drag", ""),
       row("home", "", "h"),
       "",
       row("exposure", `${settings.exposure.toExponential(1)} ${fixedExposure === null ? "auto" : "fixed"}`, ""),
       row("brightness", `${exposureBias.toFixed(2)}x`, "z / x"),
-      row("saturation", settings.saturation.toFixed(2), "c / v"),
+      row(
+        "saturation",
+        `${settings.saturation.toFixed(2)}${settings.saturation === 1 ? " accurate" : ""}`,
+        "c / v · t",
+      ),
       row("star size", settings.sizeGain.toFixed(0), "b / n"),
       row("reset view", "", "r"),
     ].join("\n");
@@ -222,6 +281,9 @@ async function main(): Promise<void> {
     previous = now;
 
     const move: [number, number, number] = [0, 0, 0];
+    // Any manual input cancels an automatic flight -- being unable to take back
+    // control mid-journey is far more annoying than having to press the key again.
+    if (camera.autoFlying && held.size > 0) camera.cancelFlyTo();
     for (const key of held) {
       const axis = AXES[key];
       if (axis) { move[0] += axis[0]; move[1] += axis[1]; move[2] += axis[2]; }
@@ -231,7 +293,8 @@ async function main(): Promise<void> {
     // Auto-exposure follows the camera. Smoothed in log space because it spans
     // decades, and slowly enough that a bright star entering the view dims the
     // sky over about a second rather than snapping.
-    const wanted = fixedExposure ?? exposureFor(camera.brightFlux, sigmaPx, TARGET_PEAK) * exposureBias;
+    const bright = settings.earthView ? earthBright : camera.brightFlux;
+    const wanted = fixedExposure ?? exposureFor(bright, sigmaPx, TARGET_PEAK) * exposureBias;
     const adapt = 1 - Math.exp(-dt * 2.5);
     settings.exposure = Math.exp(
       Math.log(settings.exposure) + (Math.log(wanted) - Math.log(settings.exposure)) * adapt,
@@ -251,10 +314,13 @@ async function main(): Promise<void> {
     }
     requestAnimationFrame(frame);
   };
+  applyView();
   // Seed from the first scan so the opening frame is not a white flash.
   camera.update([0, 0, 0], 1 / 60);
   settings.exposure =
-    fixedExposure ?? exposureFor(camera.brightFlux, sigmaPx, TARGET_PEAK) * exposureBias;
+    fixedExposure ??
+    exposureFor(settings.earthView ? earthBright : camera.brightFlux, sigmaPx, TARGET_PEAK) *
+      exposureBias;
   refreshHud();
   requestAnimationFrame(frame);
 }

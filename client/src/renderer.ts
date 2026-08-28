@@ -30,11 +30,15 @@ export interface RenderSettings {
   /** Point-spread width in pixels. A property of the optics, identical for
    *  every star; only amplitude varies. */
   sigmaPx: number;
+  /** Show the sky as observed from Earth rather than intrinsic brightness.
+   *  Only meaningful with the camera at Sol. */
+  earthView: boolean;
 }
 
 const STAR_UNIFORMS = [
   "uViewProjection", "uCameraHi", "uCameraLo", "uExposure", "uMagMin", "uMagSpan",
-  "uMagLevels", "uMinSizePx", "uMaxSizePx", "uSizeGain", "uSigmaPx", "uPalette",
+  "uMagLevels", "uMinSizePx", "uMaxSizePx", "uSizeGain", "uSigmaPx", "uEarthView",
+  "uPalette",
 ] as const;
 
 export class Renderer {
@@ -97,6 +101,12 @@ export class Renderer {
     gl.bufferData(gl.ARRAY_BUFFER, packed, gl.STATIC_DRAW);
     gl.enableVertexAttribArray(1);
     gl.vertexAttribIPointer(1, 1, gl.UNSIGNED_INT, 0, 0);
+
+    const apparentBuffer = gl.createBuffer();
+    gl.bindBuffer(gl.ARRAY_BUFFER, apparentBuffer);
+    gl.bufferData(gl.ARRAY_BUFFER, stars.apparentMagnitude, gl.STATIC_DRAW);
+    gl.enableVertexAttribArray(2);
+    gl.vertexAttribPointer(2, 1, gl.FLOAT, false, 0, 0);
 
     gl.bindVertexArray(null);
 
@@ -182,6 +192,7 @@ export class Renderer {
     gl.uniform1f(this.starUniforms["uMaxSizePx"]!, settings.maxSizePx);
     gl.uniform1f(this.starUniforms["uSizeGain"]!, settings.sizeGain);
     gl.uniform1f(this.starUniforms["uSigmaPx"]!, settings.sigmaPx);
+    gl.uniform1f(this.starUniforms["uEarthView"]!, settings.earthView ? 1 : 0);
     gl.activeTexture(gl.TEXTURE0);
     gl.bindTexture(gl.TEXTURE_2D, this.palette);
     gl.uniform1i(this.starUniforms["uPalette"]!, 0);

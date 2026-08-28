@@ -6,7 +6,7 @@
   "reference_epoch": 2016.0,
   "frame": "galactic-cartesian-parsec",
   "record_bytes": 16,
-  "record_count": 623457,
+  "record_count": 625049,
   "layout": {
     "position": "3x float32 little-endian, parsecs",
     "packed_uint32": {
@@ -26,6 +26,15 @@
         "shift": 4
       }
     }
+  },
+  "apparent_magnitude_plane": {
+    "offset_bytes": 10000784,
+    "bits": 12,
+    "dtype": "uint16",
+    "min": -2.0,
+    "max": 22.0,
+    "missing": 65535,
+    "description": "observed Gaia G from Earth; exact, uncorrected"
   },
   "colour_lut": {
     "size": 256,

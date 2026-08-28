@@ -89,6 +89,10 @@ question as fast as possible.
    real screen in a dark room, not a screenshot.
 7. **DR4-ready:** `gaiadr3` appears exactly once in the codebase, and the reference
    epoch comes from config rather than a literal.
+8. **The recognisable stars are present.** Sirius, Vega, Rigel and Orion's belt all
+   render. Moved here from Step 3 during testing: Gaia saturates around G ≈ 3, so
+   **all 25 of the brightest stars in the sky are absent from DR3**, and without them
+   criterion 3 above cannot be judged at all.
 
 Tasks: [TASKS_STEP_1.md](TASKS_STEP_1.md).
 
@@ -160,8 +164,9 @@ are just quietly wrong, sometimes permanently (PLAN.md L9c).
 - **Distance coherence** (PLAN.md §5.3) — snap resolved binaries (El-Badry et al.)
   and cluster members to common distances. This is what stops clusters rendering as
   radial hairbrushes, and it is the largest single visual quality win available.
-- **Bright-star patching** from Hipparcos / BSC for the ~400 naked-eye stars Gaia
-  saturates on (PLAN.md §1.4).
+- ~~Bright-star patching from Hipparcos~~ — **moved to Step 1**, because without it
+  Step 1's own "does the sky look right" verdict is unanswerable. Step 3 extends it
+  below the naked-eye limit if the fainter tiers need it.
 - **The colour fallback path** — de-reddened `bp_rp` → Teff for the 22.6% with no
   `teff_gspphot`. Load-bearing at `poe > 3`, not a corner case.
 - **The linked HR diagram** (PLAN.md §4.7) — both as a feature and as the QA
