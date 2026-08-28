@@ -13,18 +13,49 @@ export function perspective(fovYRadians: number, aspect: number, near: number, f
   ]);
 }
 
-/** View matrix for a camera at the origin looking down -Z, rotated by yaw/pitch.
- *  Camera *translation* is handled separately: star positions arrive already
- *  camera-relative, which is what keeps float32 precise at galactic scale. */
+/**
+ * World up is **+Z**, the north galactic pole -- not +Y.
+ *
+ * The catalogue is standard galactic cartesian: +X toward the centre, +Y toward
+ * l = 90, +Z toward the north pole. Treating +Y as up lays the Milky Way across
+ * the screen vertically and makes "look straight up" point *along* the plane
+ * rather than out of it. Every star map ever drawn puts galactic north up.
+ *
+ * With this basis, yaw and pitch are exactly galactic longitude and latitude.
+ */
+export const WORLD_UP: readonly [number, number, number] = [0, 0, 1];
+
+/** Orthonormal camera basis: right, up, forward. */
+export function basis(yaw: number, pitch: number): {
+  right: [number, number, number];
+  up: [number, number, number];
+  forward: [number, number, number];
+} {
+  const f = forward(yaw, pitch);
+  // Standard lookAt construction. Pitch is clamped short of the poles by the
+  // camera, so the cross product never degenerates.
+  const z: [number, number, number] = [-f[0], -f[1], -f[2]];
+  let rx = WORLD_UP[1] * z[2] - WORLD_UP[2] * z[1];
+  let ry = WORLD_UP[2] * z[0] - WORLD_UP[0] * z[2];
+  let rz = WORLD_UP[0] * z[1] - WORLD_UP[1] * z[0];
+  const n = Math.hypot(rx, ry, rz) || 1;
+  rx /= n; ry /= n; rz /= n;
+  return {
+    right: [rx, ry, rz],
+    up: [z[1] * rz - z[2] * ry, z[2] * rx - z[0] * rz, z[0] * ry - z[1] * rx],
+    forward: f,
+  };
+}
+
+/** View matrix for a camera at the origin. Translation is handled separately:
+ *  star positions arrive already camera-relative, which is what keeps float32
+ *  precise at galactic scale. */
 export function viewFromYawPitch(yaw: number, pitch: number): Mat4 {
-  const cy = Math.cos(yaw), sy = Math.sin(yaw);
-  const cp = Math.cos(pitch), sp = Math.sin(pitch);
-  // R = Rx(pitch) * Ry(yaw), then transposed because a view matrix is the inverse
-  // of the camera's world transform and rotations are orthonormal.
+  const { right: r, up: u, forward: f } = basis(yaw, pitch);
   return new Float32Array([
-    cy, sp * sy, cp * sy, 0,
-    0, cp, -sp, 0,
-    -sy, sp * cy, cp * cy, 0,
+    r[0], u[0], -f[0], 0,
+    r[1], u[1], -f[1], 0,
+    r[2], u[2], -f[2], 0,
     0, 0, 0, 1,
   ]);
 }
@@ -41,8 +72,8 @@ export function multiply(a: Mat4, b: Mat4): Mat4 {
   return out;
 }
 
-/** Unit forward vector for a yaw/pitch, in world space. */
+/** Unit forward vector: yaw is galactic longitude, pitch is galactic latitude. */
 export function forward(yaw: number, pitch: number): [number, number, number] {
   const cp = Math.cos(pitch);
-  return [-Math.sin(yaw) * cp, Math.sin(pitch), -Math.cos(yaw) * cp];
+  return [cp * Math.cos(yaw), cp * Math.sin(yaw), Math.sin(pitch)];
 }

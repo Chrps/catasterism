@@ -8,7 +8,7 @@
 
 import { Camera, formatDistance } from "./camera";
 import { load } from "./format";
-import { HomeMarker } from "./marker";
+import { GALACTIC_CENTRE, SOL, Waypoints } from "./waypoints";
 import { Renderer, type RenderSettings } from "./renderer";
 
 const CATALOGUE_VERSION = "dr3-v1";
@@ -66,7 +66,7 @@ async function main(): Promise<void> {
   sizeCanvas();
 
   const renderer = new Renderer(gl, stars, canvas.width, canvas.height);
-  const marker = new HomeMarker(document.body);
+  const waypoints = new Waypoints(document.body, [SOL, GALACTIC_CENTRE]);
 
   const camera = new Camera(stars.positions, stars.absoluteMagnitude, stars.count);
 
@@ -80,6 +80,13 @@ async function main(): Promise<void> {
     const value = Number(raw);
     return Number.isFinite(value) ? value : fallback;
   };
+
+  // Aim the camera from the query string, in degrees. Lets a specific patch of
+  // sky be reproduced exactly, which is what the comparison against a real star
+  // chart needs.
+  camera.yaw = (param("yaw", 0) * Math.PI) / 180;
+  camera.pitch = (param("pitch", 0) * Math.PI) / 180;
+  camera.fovYRadians = (param("fov", 60) * Math.PI) / 180;
 
   const sigmaPx = param("sigma", 1.1);
   const TARGET_PEAK = 3;
@@ -186,6 +193,13 @@ async function main(): Promise<void> {
       row("mode", flying ? "flight" : "planetarium", "f"),
       row("from Sol", formatDistance(camera.distanceFromSolPc), ""),
       row("nearest", formatDistance(camera.nearest.distancePc), ""),
+      // yaw and pitch ARE galactic longitude and latitude now that up is the
+      // north galactic pole, so the camera can just say where it is looking.
+      row(
+        "looking at",
+        `l ${(((camera.yaw * 180) / Math.PI) % 360 + 360) % 360 | 0}°  b ${((camera.pitch * 180) / Math.PI).toFixed(0)}°`,
+        "",
+      ),
       row("speed", `${formatDistance(camera.speedPcPerSecond)}/s${camera.boosting ? "  BOOST" : ""}`, ""),
       row("speed gain", camera.speedGain.toFixed(2), ", / ."),
       "",
@@ -226,7 +240,7 @@ async function main(): Promise<void> {
     sizeCanvas();
     renderer.resize(canvas.width, canvas.height);
     renderer.render(camera, settings);
-    marker.update(camera, canvas.width, canvas.height, formatDistance(camera.distanceFromSolPc));
+    waypoints.update(camera, canvas.width, canvas.height, formatDistance);
 
     frames++;
     if (now - fpsWindowStart >= 250) {
