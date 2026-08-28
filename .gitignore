@@ -15,8 +15,12 @@ client/dist/
 bun.lockb
 
 # data + scratch
-data/
-scratch/
+#
+# Anchored to the repo root on purpose. An unanchored "data/" also matches
+# pipeline/data/, which holds vendored source data that MUST be committed --
+# and the failure is silent locally, because the files are there on disk.
+/data/
+/scratch/
 
 # local agent state
 .claude/settings.local.json
