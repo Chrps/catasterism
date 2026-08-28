@@ -106,6 +106,9 @@ async function main(): Promise<void> {
   // setting -- otherwise the user is fighting the auto-exposure rather than
   // steering it.
   let exposureBias = param("bias", 1);
+  // Remembers what saturation was before snapping to the physically accurate
+  // value, so t is a toggle rather than a one-way trip.
+  let saturationBeforeTrue = 2;
   const fixedExposure = params.has("exposure") ? param("exposure", 1) : null;
 
   const settings: RenderSettings = {
@@ -164,6 +167,18 @@ async function main(): Promise<void> {
       case "x": exposureBias *= 1.6; break;
       case "c": settings.saturation = Math.max(0, settings.saturation - 0.25); break;
       case "v": settings.saturation = Math.min(8, settings.saturation + 0.25); break;
+      // Snap to physically accurate colour. Real stars are nearly white -- the
+      // Sun sits at CIELAB C* 6.4 -- so 1.0 looks washed out next to what people
+      // expect. Worth being able to see the truth in one keystroke rather than
+      // stepping there and losing your place.
+      case "t":
+        if (settings.saturation === 1) {
+          settings.saturation = saturationBeforeTrue;
+        } else {
+          saturationBeforeTrue = settings.saturation;
+          settings.saturation = 1;
+        }
+        break;
       case "b": settings.sizeGain = Math.max(0, settings.sizeGain - 1); break;
       case "n": settings.sizeGain = Math.min(32, settings.sizeGain + 1); break;
       case "f":
@@ -232,7 +247,11 @@ async function main(): Promise<void> {
       "",
       row("exposure", `${settings.exposure.toExponential(1)} ${fixedExposure === null ? "auto" : "fixed"}`, ""),
       row("brightness", `${exposureBias.toFixed(2)}x`, "z / x"),
-      row("saturation", settings.saturation.toFixed(2), "c / v"),
+      row(
+        "saturation",
+        `${settings.saturation.toFixed(2)}${settings.saturation === 1 ? " accurate" : ""}`,
+        "c / v · t",
+      ),
       row("star size", settings.sizeGain.toFixed(0), "b / n"),
       row("reset view", "", "r"),
     ].join("\n");
