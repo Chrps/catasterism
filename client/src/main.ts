@@ -6,8 +6,9 @@
  * ~1 AU to ~100 pc, a factor of 10^7 (PLAN.md §6.7).
  */
 
+import { Camera, formatDistance } from "./camera";
 import { load } from "./format";
-import { Renderer, type CameraState, type RenderSettings } from "./renderer";
+import { Renderer, type RenderSettings } from "./renderer";
 
 const CATALOGUE_VERSION = "dr3-v1";
 const TIER = "t0";
@@ -77,12 +78,8 @@ async function main(): Promise<void> {
 
   const renderer = new Renderer(gl, stars, canvas.width, canvas.height);
 
-  const camera: CameraState = {
-    position: [0, 0, 0], // at the Sun; this is the exactly-correct view (PLAN.md §2)
-    yaw: 0,
-    pitch: 0,
-    fovYRadians: (60 * Math.PI) / 180,
-  };
+  const camera = new Camera(stars.positions, stars.count);
+
   // Overridable from the query string: ?saturation=4&exposure=1e5. Makes a
   // particular view shareable, and lets the headless harness exercise settings
   // that would otherwise need a keypress.
@@ -107,34 +104,49 @@ async function main(): Promise<void> {
     sigmaPx,
   };
 
+  // --- input -------------------------------------------------------------
+  const held = new Set<string>();
+  const AXES: Record<string, [number, number, number]> = {
+    w: [0, 0, 1], s: [0, 0, -1],
+    a: [-1, 0, 0], d: [1, 0, 0],
+    " ": [0, 1, 0], shift: [0, -1, 0],
+  };
+
+  // Pointer lock for flight, drag for a quick look around without committing.
   let dragging = false;
   canvas.addEventListener("pointerdown", (e) => {
+    if (camera.mode === "flight") { void canvas.requestPointerLock(); return; }
     dragging = true;
     canvas.setPointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointerup", (e) => {
     dragging = false;
-    canvas.releasePointerCapture(e.pointerId);
+    if (canvas.hasPointerCapture(e.pointerId)) canvas.releasePointerCapture(e.pointerId);
   });
   canvas.addEventListener("pointermove", (e) => {
-    if (!dragging) return;
-    camera.yaw -= e.movementX * 0.003;
-    const limit = Math.PI / 2 - 0.001;
-    camera.pitch = Math.max(-limit, Math.min(limit, camera.pitch - e.movementY * 0.003));
+    if (document.pointerLockElement === canvas || dragging) camera.look(e.movementX, e.movementY);
   });
-  // Bottom-row letters, deliberately: brackets and equals need AltGr on Nordic
-  // and several other layouts, so they are unreachable for a lot of people.
-  // z x c v b n sit in the same physical place on every Latin layout and are
-  // adjacent, which makes them easy to find without looking.
+
+  window.addEventListener("keyup", (e) => held.delete(e.key.toLowerCase()));
+  window.addEventListener("blur", () => held.clear());
   window.addEventListener("keydown", (e) => {
     if (e.ctrlKey || e.metaKey || e.altKey) return;
-    switch (e.key.toLowerCase()) {
+    const key = e.key.toLowerCase();
+    if (key in AXES) { held.add(key); e.preventDefault(); return; }
+    switch (key) {
       case "z": settings.exposure /= 1.6; break;
       case "x": settings.exposure *= 1.6; break;
       case "c": settings.saturation = Math.max(0, settings.saturation - 0.25); break;
       case "v": settings.saturation = Math.min(8, settings.saturation + 0.25); break;
       case "b": settings.sizeGain = Math.max(0, settings.sizeGain - 1); break;
       case "n": settings.sizeGain = Math.min(32, settings.sizeGain + 1); break;
+      case "f":
+        camera.mode = camera.mode === "flight" ? "planetarium" : "flight";
+        if (camera.mode !== "flight" && document.pointerLockElement === canvas) {
+          document.exitPointerLock();
+        }
+        break;
+      case "h": camera.returnHome(); break;
       case "r":
         settings.exposure = baseExposure;
         settings.saturation = 1;
@@ -145,38 +157,58 @@ async function main(): Promise<void> {
     e.preventDefault();
     refreshHud();
   });
-
   window.addEventListener("resize", sizeCanvas);
 
+  // --- loop --------------------------------------------------------------
   let frames = 0;
   let fpsWindowStart = performance.now();
   let fps = 0;
+  let previous = performance.now();
 
   const row = (label: string, value: string, keys: string): string =>
-    `${label.padEnd(11)}${value.padEnd(12)}${keys}`;
+    `${label.padEnd(11)}${value.padEnd(14)}${keys}`;
 
   const refreshHud = (): void => {
+    const flying = camera.mode === "flight";
     hud.textContent = [
       `catasterism · ${stars.manifest.catalogue_version}`,
       `${stars.count.toLocaleString()} stars · loaded in ${loadMs.toFixed(0)} ms`,
       `${fps.toFixed(0)} fps · ${canvas.width}×${canvas.height}`,
       "",
+      row("mode", flying ? "flight" : "planetarium", "f"),
+      row("from Sol", formatDistance(camera.distanceFromSolPc), ""),
+      row("nearest", formatDistance(camera.nearest.distancePc), ""),
+      row("speed", `${formatDistance(camera.speedPcPerSecond)}/s`, ""),
+      "",
+      row("move", flying ? "wasd space shift" : "—", ""),
+      row("look", flying ? "mouse" : "drag", ""),
+      row("home", "", "h"),
+      "",
       row("exposure", settings.exposure.toExponential(2), "z / x"),
       row("saturation", settings.saturation.toFixed(2), "c / v"),
       row("star size", settings.sizeGain.toFixed(0), "b / n"),
-      row("reset", "", "r"),
-      row("look", "", "drag"),
+      row("reset view", "", "r"),
     ].join("\n");
   };
 
   const frame = (): void => {
+    const now = performance.now();
+    const dt = Math.min((now - previous) / 1000, 0.1); // clamp, so a stall never teleports
+    previous = now;
+
+    const move: [number, number, number] = [0, 0, 0];
+    for (const key of held) {
+      const axis = AXES[key];
+      if (axis) { move[0] += axis[0]; move[1] += axis[1]; move[2] += axis[2]; }
+    }
+    camera.update(move, dt);
+
     sizeCanvas();
     renderer.resize(canvas.width, canvas.height);
     renderer.render(camera, settings);
 
     frames++;
-    const now = performance.now();
-    if (now - fpsWindowStart >= 500) {
+    if (now - fpsWindowStart >= 250) {
       fps = (frames * 1000) / (now - fpsWindowStart);
       frames = 0;
       fpsWindowStart = now;
