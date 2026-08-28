@@ -529,6 +529,24 @@ error. Note that `ag_gspphot` coverage is *exactly* the same 239,575,586 sources
 arrive and go missing together. The 25.2% without it need `A_G` from a 3D dust map
 along the line of sight, using the same machinery as the colour fallback in §4.2.
 
+#### Verified: the flight record renders stars without Earth's dust
+
+The algebra collapses neatly, and it is worth seeing because it confirms the two
+corrections compose correctly. Substituting `M_G = G + 5log₁₀(plx) − 10 − A_G`
+into `m = M_G + 5log₁₀(d/10)` with `d = 1000/plx` gives simply:
+
+```
+m = G − A_G
+```
+
+Measured on T0's most-reddened bright star: observed G = 4.318, A_G = 7.111, and
+the recomputed apparent magnitude is −2.793 — brighter than Sirius, because 7.1
+magnitudes of dust have been removed. Fly past the dust and the star really is
+that bright.
+
+That is correct for the flight record and **wrong for a view from Earth**, which
+is exactly why §3.3's planetarium layer stores raw observed values instead.
+
 #### The renderer's job
 
 ```

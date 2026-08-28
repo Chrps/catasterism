@@ -41,4 +41,12 @@ POSITION_BITS_PER_AXIS = 12
 MAGNITUDE_BITS = 12
 COLOUR_BITS = 8
 FLAG_BITS = 8
-ABS_MAG_MIN, ABS_MAG_MAX = -10.0, 20.0
+# Measured against T0 rather than assumed: real values run -13.44 to +21.64, so
+# the -10..+20 range PLAN.md quotes as typical is too narrow to encode without
+# clipping. 37 magnitudes over 12 bits is 0.0090 mag per step (0.83% in flux),
+# still far below the point two adjacent stars can be told apart.
+#
+# Note the bright tail is partly spurious: T0's G<8 clause admits saturated
+# stars whose poor parallaxes yield impossibly luminous M_G. Step 3's Hipparcos
+# patching is what fixes those, not a wider range.
+ABS_MAG_MIN, ABS_MAG_MAX = -15.0, 22.0

@@ -47,6 +47,10 @@ jobs:
         working-directory: client
       - run: bun run typecheck
         working-directory: client
+      # Cross-language check: the TypeScript decoder must agree with the Python
+      # encoder about the bit layout (PLAN.md 5.5).
+      - run: bun test
+        working-directory: client
       - run: bun run build
         working-directory: client
       - uses: actions/upload-pages-artifact@v5
