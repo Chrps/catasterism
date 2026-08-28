@@ -45,6 +45,10 @@ jobs:
       - uses: oven-sh/setup-bun@v2
       - run: bun install
         working-directory: client
+      # Shaders only fail at runtime otherwise, and a failed shader renders a
+      # black screen with no obvious cause.
+      - run: sudo apt-get update -qq && sudo apt-get install -y -qq glslang-tools
+      - run: python3 tools/validate_shaders.py
       - run: bun run typecheck
         working-directory: client
       # Cross-language check: the TypeScript decoder must agree with the Python
