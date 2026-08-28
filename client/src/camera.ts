@@ -205,5 +205,6 @@ export function formatDistance(parsecs: number): string {
   if (au < 1000) return `${au.toFixed(au < 10 ? 2 : 0)} AU`;
   const ly = parsecs * LY_PER_PC;
   if (ly < 100) return `${ly.toFixed(ly < 10 ? 2 : 1)} ly`;
-  return `${parsecs.toFixed(parsecs < 100 ? 1 : 0)} pc`;
+  if (parsecs < 1000) return `${parsecs.toFixed(parsecs < 100 ? 1 : 0)} pc`;
+  return `${(parsecs / 1000).toFixed(2)} kpc`;
 }

@@ -8,7 +8,7 @@
 
 import { Camera, formatDistance } from "./camera";
 import { load } from "./format";
-import { HomeMarker } from "./marker";
+import { GALACTIC_CENTRE, SOL, Waypoints } from "./waypoints";
 import { Renderer, type RenderSettings } from "./renderer";
 
 const CATALOGUE_VERSION = "dr3-v1";
@@ -66,7 +66,7 @@ async function main(): Promise<void> {
   sizeCanvas();
 
   const renderer = new Renderer(gl, stars, canvas.width, canvas.height);
-  const marker = new HomeMarker(document.body);
+  const waypoints = new Waypoints(document.body, [SOL, GALACTIC_CENTRE]);
 
   const camera = new Camera(stars.positions, stars.absoluteMagnitude, stars.count);
 
@@ -240,7 +240,7 @@ async function main(): Promise<void> {
     sizeCanvas();
     renderer.resize(canvas.width, canvas.height);
     renderer.render(camera, settings);
-    marker.update(camera, canvas.width, canvas.height, formatDistance(camera.distanceFromSolPc));
+    waypoints.update(camera, canvas.width, canvas.height, formatDistance);
 
     frames++;
     if (now - fpsWindowStart >= 250) {
