@@ -66,9 +66,19 @@ covered by the Gaia terms.
 | Lindegren et al. (2021), A&A 649, A4 | Parallax zero-point correction | 3 |
 | Hipparcos (ESA, 1997) | Bright stars Gaia saturates on | 3 |
 | A DR3 open-cluster membership catalogue (TBD) | Cluster distance coherence | 3 |
-| SIMBAD and VizieR, CDS Strasbourg | Live identification queries | 5 |
+| SIMBAD and VizieR, CDS Strasbourg | Live identification queries; identifier resolution for the bright-star patch and constellation figures | 1, 5 |
+| Hipparcos, ESA (1997) and van Leeuwen (2007) | The ~1,800 bright stars Gaia saturates on. Distributed through the ESA Gaia archive under the same terms | 1 |
+| [MarcvdSluys/ConstellationLines](https://github.com/MarcvdSluys/ConstellationLines) — **CC BY 4.0** | Constellation stick figures, as Bright Star Catalogue numbers | 1 |
+| Bright Star Catalogue, 5th Revised Ed. (Hoffleit & Warren 1991) — VizieR `V/50` | HR → HD, bridging the figures to Hipparcos | 1 |
 
 SIMBAD and VizieR are operated by CDS, Strasbourg, France; their use requires
 citing Wenger et al. (2000) and Ochsenbein et al. (2000) respectively. Both are
 queried live from the browser, so be a considerate client — cache aggressively
 and do not hammer them.
+
+The constellation figures are **CC BY 4.0**, which is compatible with the
+NonCommercial terms above: CC BY permits the use, and the derived catalogue stays
+NC because of Gaia. Two alternatives were rejected on licence grounds —
+[HYG](https://astronexus.com/hyg) is CC BY-SA, whose ShareAlike would propagate
+into the derived catalogue, and Stellarium's `constellationship.fab` is GPL. The
+vendored copy lives in `pipeline/data/` with its provenance recorded alongside.

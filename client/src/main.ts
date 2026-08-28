@@ -8,6 +8,7 @@
 
 import { Camera, formatDistance } from "./camera";
 import { load } from "./format";
+import { Constellations, load as loadConstellations } from "./constellations";
 import { GALACTIC_CENTRE, SOL, Waypoints } from "./waypoints";
 import { Renderer, type RenderSettings } from "./renderer";
 
@@ -67,6 +68,10 @@ async function main(): Promise<void> {
 
   const renderer = new Renderer(gl, stars, canvas.width, canvas.height);
   const waypoints = new Waypoints(document.body, [SOL, GALACTIC_CENTRE]);
+  // Non-fatal: the sky is still worth looking at without the figures.
+  const constellations = await loadConstellations(`${CATALOGUE_VERSION}-constellations`)
+    .then((data) => new Constellations(document.body, data))
+    .catch(() => null);
 
   const camera = new Camera(stars.positions, stars.absoluteMagnitude, stars.count);
 
@@ -190,6 +195,9 @@ async function main(): Promise<void> {
           settings.saturation = 1;
         }
         break;
+      case "l":
+        if (constellations) constellations.visible = !constellations.visible;
+        break;
       case "b": settings.sizeGain = Math.max(0, settings.sizeGain - 1); break;
       case "n": settings.sizeGain = Math.min(32, settings.sizeGain + 1); break;
       case "f":
@@ -271,6 +279,13 @@ async function main(): Promise<void> {
         "c / v · t",
       ),
       row("star size", settings.sizeGain.toFixed(0), "b / n"),
+      row(
+        "figures",
+        constellations
+          ? `${constellations.visible ? "on" : "off"} · ${constellations.segmentCount} lines`
+          : "unavailable",
+        "l",
+      ),
       row("reset view", "", "r"),
     ].join("\n");
   };
@@ -303,6 +318,7 @@ async function main(): Promise<void> {
     sizeCanvas();
     renderer.resize(canvas.width, canvas.height);
     renderer.render(camera, settings);
+    constellations?.update(camera, canvas.width, canvas.height);
     waypoints.update(camera, canvas.width, canvas.height, formatDistance);
 
     frames++;

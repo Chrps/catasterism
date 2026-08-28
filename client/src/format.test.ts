@@ -64,10 +64,10 @@ test("fingerprint matches the Python encoder", () => {
   // be updated together, which is what keeps the two implementations honest.
   console.log("TS fingerprint:", JSON.stringify(fp));
   expect(fp).toEqual({
-    count: 625049,
-    sum_x: 17473423.431,
-    sum_abs_g: 7244935.6,
-    sum_colour_index: 75684316,
-    sum_flags: 441317,
+    count: 625234,
+    sum_x: 17489713.877,
+    sum_abs_g: 7244791.07,
+    sum_colour_index: 75720594,
+    sum_flags: 442797,
   });
 });
