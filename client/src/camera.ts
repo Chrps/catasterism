@@ -19,6 +19,8 @@
  *    the gap, which is what makes arriving possible without touching a control.
  */
 
+import { basis } from "./mat4";
+
 const PC_PER_AU = 1 / 206264.806;
 const LY_PER_PC = 3.261563;
 
@@ -170,17 +172,11 @@ export class Camera {
     if (mx === 0 && my === 0 && mz === 0) return;
 
     const step = this.speedPcPerSecond * dt;
-    const cy = Math.cos(this.yaw), sy = Math.sin(this.yaw);
-    const cp = Math.cos(this.pitch), sp = Math.sin(this.pitch);
-
-    // forward = -Z in view space, mapped back to world
-    const fx = -sy * cp, fy = sp, fz = -cy * cp;
-    const rx = cy, ry = 0, rz = -sy;          // right
-    const ux = sy * sp, uy = cp, uz = cy * sp; // up
-
-    this.position[0] += (fx * mz + rx * mx + ux * my) * step;
-    this.position[1] += (fy * mz + ry * mx + uy * my) * step;
-    this.position[2] += (fz * mz + rz * mx + uz * my) * step;
+    // Same basis the view matrix uses, so movement matches what is on screen.
+    const { right, up, forward } = basis(this.yaw, this.pitch);
+    for (let i = 0; i < 3; i++) {
+      this.position[i] = this.position[i]! + (forward[i]! * mz + right[i]! * mx + up[i]! * my) * step;
+    }
   }
 
   look(deltaX: number, deltaY: number, sensitivity = 0.0022): void {
