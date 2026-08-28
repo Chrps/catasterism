@@ -1,0 +1,10 @@
+# Baked into the dev container image so the environment is ready on entry.
+# Keep in sync with pipeline/pyproject.toml.
+numpy>=2.0
+pyarrow>=17
+duckdb>=1.1
+astropy>=6.1
+astroquery>=0.4.7
+requests>=2.32
+pytest>=8
+matplotlib>=3.9

@@ -1,0 +1,9 @@
+# Build context is the repo root (see .devcontainer/devcontainer.json); only
+# pipeline/requirements.txt is actually needed.
+.git
+data
+scratch
+client/dist
+client/node_modules
+tools/lang-benchmark/target
+**/__pycache__

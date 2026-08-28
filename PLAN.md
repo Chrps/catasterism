@@ -167,6 +167,12 @@ saturates on the brightest stars: **~400 naked-eye stars, including famous ones,
 have degraded or missing astrometry.** These are exactly the stars a user will look
 for first. They must be patched in from Hipparcos / the Bright Star Catalogue.
 
+Confirmed concretely while validating T0: SIMBAD holds **no Gaia DR3 identifier at
+all** for Sirius, Vega, Altair, Arcturus or Pollux. Five of the most recognisable
+stars in the sky are simply not in the catalogue. Proxima Centauri and Barnard's Star
+are present and validate exactly — 1.302 pc and 1.828 pc against accepted 1.301 and
+1.828 — so the gap is specifically at the bright end, as predicted.
+
 ### 1.5 Acquisition cost
 
 | Route | Transfer | Verdict |
@@ -1307,12 +1313,27 @@ dust maps, cross-matching) and `astropy` / `dustmaps` are the whole argument.
 6. Cartesian conversion: equatorial → **Galactic** Cartesian in parsecs. Use
    Galactic, not equatorial — it makes the disc lie in a plane, which every later
    visual decision benefits from.
-7. **Record the epoch: Gaia DR3 positions are at J2016.0, not J2000.0.** Impact today
-   is negligible (a few mas/yr of proper motion over a decade is far below anything
-   visible), but it must be stated in the pack header (§5.5) because it is the anchor
-   for two later things: any cross-match against a catalogue at a different epoch
-   (Hipparcos is J1991.25, which Step 3's bright-star patching hits directly), and
-   proper-motion time travel.
+7. **Record the epoch: Gaia DR3 positions are at J2016.0, not J2000.0.** It must be
+   stated in the pack header (§5.5), and it matters far more than it looks.
+
+   *For rendering* the effect is negligible — a few mas/yr of proper motion over a
+   decade is well below anything visible. **For _matching_ it is severe**, because the
+   "typical star" framing is wrong for exactly the population the near tiers are made
+   of. Nearby stars move fast:
+
+   | Star | Proper motion | Drift, J2000 → the DR3 epoch |
+   | --- | --- | --- |
+   | Barnard's Star | 10.36 ″/yr | **167 ″** |
+   | Proxima Centauri | 3.85 ″/yr | 62 ″ |
+   | Sirius | 1.34 ″/yr | 21 ″ |
+
+   Validating T0 against J2000 reference coordinates silently matched the **wrong
+   stars** — 167 ″ is enormous for a positional cross-match, and it selects a
+   neighbour rather than failing. So: **match by `source_id`, never by coordinate**,
+   and where a coordinate match is unavoidable, propagate the epoch first.
+
+   This is also why Step 3's Hipparcos cross-match needs care: J1991.25 → J2016.0 is a
+   25-year baseline, so Barnard's Star moves over four arcminutes across it.
 
 ### Stage 3 — Build the octree
 
