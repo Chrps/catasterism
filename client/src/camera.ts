@@ -40,6 +40,12 @@ export interface NearestStar {
   distancePc: number;
 }
 
+/** How many of the brightest stars to track when setting auto-exposure.
+ *  Using the single brightest lets one freak object -- a heavily de-reddened
+ *  star, or whichever one you happen to be flying at -- dictate the whole sky.
+ *  Taking the Nth brightest is robust to that at no real cost. */
+const BRIGHT_RANK = 48;
+
 export class Camera {
   /** float64 throughout. Only the camera-relative difference reaches the GPU,
    *  which is what keeps float32 adequate at galactic scale (PLAN.md §6.3). */
@@ -62,14 +68,26 @@ export class Camera {
 
   nearest: NearestStar = { index: -1, distancePc: NEAREST_FLOOR_PC };
 
+  /** Apparent flux of the BRIGHT_RANK-th brightest star from here, in the same
+   *  units the shader uses. Drives auto-exposure. */
+  brightFlux = 1;
+
   private frame = 0;
   private smoothedNearestPc = NEAREST_FLOOR_PC;
   private readonly positions: Float32Array;
+  private readonly luminosity: Float32Array;
   private readonly count: number;
+  private readonly top = new Float64Array(BRIGHT_RANK);
 
-  constructor(positions: Float32Array, count: number) {
+  constructor(positions: Float32Array, absoluteMagnitude: Float32Array, count: number) {
     this.positions = positions;
     this.count = count;
+    // Precomputed once: the scan runs several times a second over every star,
+    // and a pow() inside that loop would be the whole cost.
+    this.luminosity = new Float32Array(count);
+    for (let i = 0; i < count; i++) {
+      this.luminosity[i] = 10 ** (-0.4 * absoluteMagnitude[i]!);
+    }
   }
 
   /** Distance from the Sun, which sits at the origin. */
@@ -83,11 +101,21 @@ export class Camera {
     return this.speedGain * this.smoothedNearestPc * (this.boosting ? this.boostFactor : 1);
   }
 
-  private scanNearest(): void {
+  /**
+   * One pass over every star, producing both the nearest neighbour (for speed)
+   * and the bright tail (for exposure). Doing them together matters: the loop
+   * is the expensive part and the second result is nearly free.
+   */
+  private scan(): void {
     const [cx, cy, cz] = this.position;
     const p = this.positions;
+    const lum = this.luminosity;
+    const top = this.top;
+    top.fill(0);
+    let cutoff = 0; // smallest flux currently in the top list
     let best = Infinity;
     let bestIndex = -1;
+
     for (let i = 0; i < this.count; i++) {
       const dx = p[i * 3]! - cx;
       const dy = p[i * 3 + 1]! - cy;
@@ -97,8 +125,22 @@ export class Camera {
         best = d2;
         bestIndex = i;
       }
+      const flux = lum[i]! / Math.max(d2, 1e-12);
+      if (flux > cutoff) {
+        // Insertion into a 48-slot descending list. The test above fails for
+        // almost every star, so this costs nothing in the common case.
+        let j = BRIGHT_RANK - 1;
+        while (j > 0 && top[j - 1]! < flux) {
+          top[j] = top[j - 1]!;
+          j--;
+        }
+        top[j] = flux;
+        cutoff = top[BRIGHT_RANK - 1]!;
+      }
     }
+
     this.nearest = { index: bestIndex, distancePc: Math.sqrt(best) };
+    this.brightFlux = Math.max(top[BRIGHT_RANK - 1]!, 1e-30);
   }
 
   /**
@@ -107,7 +149,7 @@ export class Camera {
    * @param dt    seconds since the previous frame.
    */
   update(move: [number, number, number], dt: number): void {
-    if (this.frame % SCAN_INTERVAL_FRAMES === 0) this.scanNearest();
+    if (this.frame % SCAN_INTERVAL_FRAMES === 0) this.scan();
     this.frame++;
 
     const clamped = Math.min(
