@@ -170,9 +170,9 @@ def test_cross_language_fingerprint(built):
         "sum_flags": int(d["flags"].astype(np.int64).sum()),
     }
     assert fingerprint == {
-        "count": 625049,
-        "sum_x": 17473423.431,
-        "sum_abs_g": 7244935.6,
-        "sum_colour_index": 75684316,
-        "sum_flags": 441317,
+        "count": 625234,
+        "sum_x": 17489713.877,
+        "sum_abs_g": 7244791.07,
+        "sum_colour_index": 75720594,
+        "sum_flags": 442797,
     }

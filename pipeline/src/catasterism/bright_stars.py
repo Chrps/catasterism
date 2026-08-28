@@ -45,14 +45,23 @@ FLAG_PATCHED = 1 << 3
 """From Hipparcos, not Gaia. Distinct from FLAG_SYNTHETIC (the Sun) so the two
 kinds of non-Gaia source stay tellable apart."""
 
-# The unmatched bright stars: in Hipparcos, absent from Gaia's own cross-match.
+# Bright stars Gaia cannot place.
+#
+# Two cases, and the second is easy to miss: a star with no Gaia counterpart at
+# all, and a star that HAS one but with no parallax. The second still has no
+# usable position, so it is dropped at encoding and vanishes from the render
+# exactly as if it were absent -- 185 stars brighter than Hp 6.5 are in that
+# state. Patching only the first case leaves holes in constellations whose stars
+# appear, from the outside, to be present.
 _MISSING_QUERY = """
 SELECT h.hip, h.ra, h.dec, h.plx, h.pm_ra, h.pm_de, h.hp_mag, h.b_v, o.vmag
 FROM public.hipparcos_newreduction AS h
 LEFT OUTER JOIN {xmatch} AS x ON h.hip = x.original_ext_source_id
+LEFT OUTER JOIN {source} AS g ON g.source_id = x.source_id
 LEFT OUTER JOIN public.hipparcos AS o ON h.hip = o.hip
-WHERE h.hp_mag < {limit} AND x.source_id IS NULL AND h.plx > 0
+WHERE h.hp_mag < {limit} AND h.plx > 0
   AND o.vmag IS NOT NULL AND h.b_v IS NOT NULL
+  AND (x.source_id IS NULL OR g.parallax IS NULL)
 """
 
 # Stars in BOTH catalogues, used to calibrate the colour transformation.
@@ -153,7 +162,10 @@ def fetch(release: Release, limit: float = DEFAULT_MAGNITUDE_LIMIT):
     calibration = _query(
         _CALIBRATION_QUERY.format(xmatch=xmatch, source=release.source_table), session
     )
-    missing = _query(_MISSING_QUERY.format(xmatch=xmatch, limit=limit), session)
+    missing = _query(
+        _MISSING_QUERY.format(xmatch=xmatch, source=release.source_table, limit=limit),
+        session,
+    )
     return missing, fit_colour_transform(calibration)
 
 

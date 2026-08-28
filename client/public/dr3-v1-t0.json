@@ -6,7 +6,7 @@
   "reference_epoch": 2016.0,
   "frame": "galactic-cartesian-parsec",
   "record_bytes": 16,
-  "record_count": 625049,
+  "record_count": 625234,
   "layout": {
     "position": "3x float32 little-endian, parsecs",
     "packed_uint32": {
@@ -28,7 +28,7 @@
     }
   },
   "apparent_magnitude_plane": {
-    "offset_bytes": 10000784,
+    "offset_bytes": 10003744,
     "bits": 12,
     "dtype": "uint16",
     "min": -2.0,

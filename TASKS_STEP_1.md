@@ -13,7 +13,8 @@ G = 8. ~5 MB.
 SIMBAD, cluster coherence, dust maps, the Galaxy model, proper motion. One file,
 loaded once, held in memory. The point is to reach the visual question fast.
 
-Nine tasks: T1–T4 build the data, T5–T7 build the client, T8–T9 deliver the verdict.
+Eleven tasks: T1–T4 build the data, T5–T7 build the client, T8/T10 verify it,
+T9 delivers the verdict.
 
 **Four decisions must be settled here**, because everything after depends on them:
 flight controls (T6), client toolchain (T1), the performance budget (T8), and
@@ -261,6 +262,47 @@ Against STEPS.md's exit criteria, on real hardware, not a dev machine.
 - Test on at least one low-end laptop and one high-DPI display.
 
 **Done when:** every criterion is measured and recorded, pass or fail.
+
+---
+
+## T10 — Constellation lines
+
+Added after testing: with the bright stars patched in, constellations became
+visible enough to *recognise* — but recognising them by eye is impressionistic.
+Drawing the lines turns that into a precise check. If a line lands on a star, the
+whole chain is right: coordinates, frame, epoch, magnitude, the bright-star
+patch, the projection. If it lands beside one, something upstream is wrong and
+the picture shows you which.
+
+That is why this sits in Step 1 rather than Step 6 with the other visual
+features. It is the sharpest end-to-end verification available, and it happens to
+also be the thing that makes the sky legible.
+
+- **Key the line data on HIP numbers.** Patched stars already carry `−hip` as
+  their `source_id`, and Gaia stars resolve through
+  `gaiadr3.hipparcos2_best_neighbour`. So a HIP-keyed dataset maps directly onto
+  what is already in the tier, with no positional matching and therefore no epoch
+  trap.
+- **Watch the licence.** Candidates keyed on HIP:
+  [MarcvdSluys/ConstellationLines](https://github.com/MarcvdSluys/ConstellationLines)
+  (CC BY 4.0) and
+  [doinab/constellation-lines](https://github.com/doinab/constellation-lines)
+  (Creative Commons, Stellarium-compatible JSON). Prefer **CC BY**;
+  [HYG](https://astronexus.com/hyg) is CC BY-SA-4.0, and ShareAlike would
+  propagate into the derived catalogue. Stellarium's own `constellationship.fab`
+  is GPL. Credit whichever is used in `ATTRIBUTION.md`.
+- **Draw in the overlay, not the HDR pipeline** — same reasoning as the
+  waypoints (§marker): lines must not be dimmed by auto-exposure, and they want
+  crisp edges rather than bloom.
+- **On by default in planetarium mode, off in flight.** The figures only mean
+  anything from Earth; a few parsecs away they are nonsense, which is itself
+  worth showing once. Fade them out as the camera leaves.
+- Report any star a line references that the tier does not contain. A missing
+  endpoint is a data gap worth knowing about, not something to silently skip.
+
+**Done when:** Orion, the Big Dipper and Cassiopeia are drawn, every endpoint
+resolves to a real star in the tier, and the lines land on the stars rather than
+beside them.
 
 ---
 
